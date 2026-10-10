@@ -108,7 +108,30 @@ DOC_CONTEXT: dict[str, str] = {
 }
 
 # --- qdrant ----------------------------------------------------------------
-QDRANT_URL = "http://localhost:6333"
+
+def _load_dotenv() -> None:
+    """Load KEY=VALUE lines from PROJECT_ROOT/.env without overriding real
+    environment variables. (.env is gitignored, so secrets stay out of git.)"""
+    env_file = PROJECT_ROOT / ".env"
+    if not env_file.exists():
+        return
+    for raw in env_file.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+_load_dotenv()
+
+# Defaults to the local Docker instance. For Qdrant Cloud set, in .env:
+#   QDRANT_URL=https://<cluster-id>.<region>.<provider>.cloud.qdrant.io:6333
+#   QDRANT_API_KEY=<your key>
+QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
+QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY") or None
+QDRANT_IS_LOCAL = QDRANT_URL.startswith(
+    ("http://localhost", "http://127.0.0.1", "http://[::1]"))
 COLLECTION = f"eci_docs_{PROFILE}"
 DENSE_VECTOR = "dense"
 SPARSE_VECTOR = "sparse"

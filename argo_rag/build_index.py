@@ -32,6 +32,8 @@ from .config import (
     EMBED_MODEL,
     INDEX_META_PATH,
     PROFILE,
+    QDRANT_API_KEY,
+    QDRANT_IS_LOCAL,
     QDRANT_URL,
     SPARSE_VECTOR,
     UPSERT_BATCH,
@@ -103,6 +105,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="embed chunks into Qdrant")
     parser.add_argument("--recreate", action="store_true",
                         help="drop and rebuild the collection")
+    parser.add_argument("--force", action="store_true",
+                        help="allow --recreate on a REMOTE (non-local) Qdrant")
     parser.add_argument("--limit", type=int, default=0,
                         help="only embed the first N chunks (smoke test)")
     args = parser.parse_args()
@@ -111,6 +115,16 @@ def main() -> int:
         print(f"missing {CHUNKS_PATH} - run `python -m argo_rag.chunk` first",
               file=sys.stderr)
         return 1
+
+    host = QDRANT_URL.split("//", 1)[-1]
+    print(f"target Qdrant: {host} ({'local' if QDRANT_IS_LOCAL else 'REMOTE'})")
+    if args.recreate and not QDRANT_IS_LOCAL and not args.force:
+        print("refusing --recreate on a remote Qdrant: it DELETES the shared "
+              "collection for everyone using it. Re-run with --force if you "
+              "really mean it.", file=sys.stderr)
+        return 2
+    if not QDRANT_IS_LOCAL and not QDRANT_API_KEY:
+        print("warning: remote URL but no QDRANT_API_KEY set", file=sys.stderr)
 
     chunks = load_chunks()
     if args.limit:
@@ -125,7 +139,7 @@ def main() -> int:
     print(f"profile={PROFILE} model={EMBED_MODEL}")
     embedder = Embedder()
 
-    client = QdrantClient(url=QDRANT_URL, timeout=120)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=120)
     ensure_collection(client, args.recreate)
 
     print(f"embedding {len(chunks)} chunks...")

@@ -20,6 +20,7 @@ from .config import (
     DENSE_VECTOR,
     EMBED_MODEL,
     PROFILE,
+    QDRANT_API_KEY,
     QDRANT_URL,
     SPARSE_VECTOR,
 )
@@ -44,7 +45,7 @@ def main() -> int:
     from .embedder import Embedder
 
     dense, sparse = Embedder().embed_query(query)
-    client = QdrantClient(url=QDRANT_URL, timeout=60)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=60)
 
     if args.dense_only:
         response = client.query_points(
