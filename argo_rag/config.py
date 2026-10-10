@@ -90,6 +90,17 @@ DOC_CONTEXT: dict[str, str] = {
                  "request for deletion of a name, in the electoral roll",
     "form_8_en": "Form 8 guidelines: shifting of residence, correction of "
                  "entries, replacement EPIC voter ID card, marking PwD",
+    "form_6_english": "Form 6 application form: new voter registration, with "
+                      "the list of age proof and address proof documents",
+    "form_6a_english": "Form 6A application form and guidelines: overseas "
+                       "(NRI) elector registration, passport details",
+    "form_7_english": "Form 7 application form: objection to inclusion of a "
+                      "name or deletion of a name in the electoral roll",
+    "form_8_english": "Form 8 application form: shifting of residence, "
+                      "correction of entries, replacement EPIC, marking PwD, "
+                      "with address proof documents",
+    "declaration_form_english": "Declaration Form (Annexure-IV) submitted "
+                                "along with Form 6 or Form 8",
     "voterguide2025eng": "Voter Guide 2025 (Election Commission of India)",
     "registration_of_electors_rules": "Registration of Electors Rules, 1960",
     "representation_of_the_people_act_1950":

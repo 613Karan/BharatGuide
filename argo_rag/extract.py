@@ -32,7 +32,11 @@ def doc_id_for(filename: str) -> str:
 
 def normalise(text: str) -> str:
     """Tidy PDF text without destroying paragraph structure."""
-    text = text.replace("\u00ad", "")               # soft hyphens
+    # Some PDFs (the Declaration Form) use U+200B as the ONLY separator between
+    # words, so it must become a space; deleting it glues words together.
+    # Soft hyphens and the other invisible joiners carry no word break.
+    text = text.replace("\u200b", " ")
+    text = re.sub("[\u00ad\u200c\u200d\u2060\ufeff]", "", text)
     text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)    # de-hyphenate line wraps
     text = re.sub(r"[ \t]+", " ", text)             # collapse runs of spaces
     text = re.sub(r"\n{3,}", "\n\n", text)          # at most one blank line
