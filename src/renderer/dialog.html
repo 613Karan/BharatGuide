@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <title>Ghost Cursor Chat</title>
+    <link rel="stylesheet" href="dialog.css" />
+  </head>
+  <body>
+    <div id="panel" class="panel">
+      <header class="head">
+        <div class="title"><span class="beacon"></span><span>Ghost Cursor</span></div>
+        <div class="controls">
+          <span id="hotkey" class="hotkey">Ctrl+Shift+G</span>
+          <span id="status" class="status" data-state="Idle">Idle</span>
+          <button id="closeBtn" class="icon" type="button" title="Hide panel">&#8211;</button>
+        </div>
+      </header>
+
+      <div id="messages" class="messages" aria-live="polite"></div>
+
+      <form id="form" class="composer" autocomplete="off">
+        <input
+          id="input"
+          class="input"
+          type="text"
+          spellcheck="false"
+          placeholder='Ask, or say: search "Bohemian Rhapsody"'
+        />
+        <button id="send" class="send" type="submit">Send</button>
+      </form>
+
+      <p id="hint" class="hint">
+        Enter sends · Esc stops the ghost · double Esc halts automation · your mouse stays yours
+      </p>
+    </div>
+
+    <script src="dialog.js"></script>
+  </body>
+</html>

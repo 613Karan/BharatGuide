@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <title>Ghost Cursor Overlay</title>
+    <link rel="stylesheet" href="overlay.css" />
+  </head>
+  <body>
+    <!--
+      Transparent, click-through, never focused. Everything here is drawn only:
+      the ghost cursor, its arc, the target ring, hints. No OS-level input.
+    -->
+    <canvas id="trail"></canvas>
+
+    <div id="cursor" class="cursor hidden" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="26" height="26">
+        <path
+          d="M4 2 L4 20 L9 15 L12.5 22 L15.5 20.5 L12 14 L19 14 Z"
+          fill="rgba(120,220,255,0.85)"
+          stroke="rgba(10,30,45,0.9)"
+          stroke-width="1.2"
+        />
+      </svg>
+    </div>
+
+    <div id="ring" class="ring hidden" aria-hidden="true"></div>
+    <div id="rippleLayer" aria-hidden="true"></div>
+
+    <div id="hint" class="hint hidden" aria-hidden="true"></div>
+
+    <div id="thinking" class="thinking hidden" aria-hidden="true">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="label">ghost is thinking</span>
+    </div>
+
+    <div id="offscreen" class="offscreen hidden" aria-hidden="true">
+      <span id="offscreenArrow" class="arrow">&#10148;</span>
+      <span id="offscreenText" class="text"></span>
+    </div>
+
+    <script src="overlay.js"></script>
+  </body>
+</html>

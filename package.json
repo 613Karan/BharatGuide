@@ -1,0 +1,27 @@
+{
+  "name": "ghost-cursor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ghost Cursor: a standalone desktop prototype that shows an always-visible ghost cursor to guide the user where to click and scroll in Chrome. The user's real mouse and keyboard are never controlled.",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "compile": "tsc -p tsconfig.json",
+    "assets": "node scripts/copy-assets.mjs",
+    "build": "npm run compile && npm run assets",
+    "start": "npm run build && electron .",
+    "smoke": "npm run build && electron . --smoke",
+    "test": "npm run build && node --test dist/test/unit/",
+    "test:unit": "npm run build && node --test dist/test/unit/",
+    "test:integration": "npm run build && node --test dist/test/integration/",
+    "test:all": "npm run build && node --test dist/test/unit/ dist/test/integration/"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "electron": "^33.3.1",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}

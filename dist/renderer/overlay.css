@@ -1,0 +1,225 @@
+/* Ghost overlay: pure drawing. No layout of the real page, no input handling. */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+.hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+#trail {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ---- the ghost cursor -------------------------------------------------- */
+
+.cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  margin-left: -4px;
+  margin-top: -2px;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(120, 220, 255, 0.75));
+  transition: opacity 160ms ease;
+  will-change: transform;
+}
+
+.cursor svg {
+  display: block;
+}
+
+.cursor.pulse svg {
+  animation: cursor-pulse 420ms ease-out;
+}
+
+@keyframes cursor-pulse {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 4px rgba(120, 220, 255, 0.6));
+  }
+  45% {
+    transform: scale(1.35);
+    filter: drop-shadow(0 0 16px rgba(160, 235, 255, 0.95));
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(120, 220, 255, 0.75));
+  }
+}
+
+/* ---- target ring ------------------------------------------------------- */
+
+.ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  margin-left: -23px;
+  margin-top: -23px;
+  border: 2px solid rgba(120, 220, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(120, 220, 255, 0.45) inset;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.ring.beat {
+  animation: ring-beat 620ms ease-out;
+}
+
+@keyframes ring-beat {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.35;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+}
+
+/* ---- ripples (scroll / attention) -------------------------------------- */
+
+#rippleLayer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ripple {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+  border: 2px solid rgba(150, 230, 255, 0.85);
+  border-radius: 50%;
+  animation: ripple-out 760ms ease-out forwards;
+}
+
+@keyframes ripple-out {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(4.5);
+    opacity: 0;
+  }
+}
+
+/* ---- hint text --------------------------------------------------------- */
+
+.hint {
+  position: fixed;
+  left: 0;
+  top: 0;
+  max-width: 340px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: rgba(12, 22, 32, 0.88);
+  border: 1px solid rgba(120, 220, 255, 0.45);
+  color: #e8f6ff;
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* ---- thinking pill ----------------------------------------------------- */
+
+.thinking {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(12, 22, 32, 0.85);
+  border: 1px solid rgba(120, 220, 255, 0.35);
+  color: #cfe9f7;
+  font-size: 12px;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.thinking .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(150, 230, 255, 0.9);
+  animation: dot-bounce 1s infinite ease-in-out;
+}
+
+.thinking .dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.thinking .dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.thinking .label {
+  margin-left: 4px;
+}
+
+@keyframes dot-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* ---- off-screen marker ------------------------------------------------- */
+
+.offscreen {
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(12, 22, 32, 0.88);
+  border: 1px solid rgba(255, 200, 120, 0.6);
+  color: #ffe9c9;
+  font-size: 12px;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.offscreen .arrow {
+  display: inline-block;
+  font-size: 15px;
+}
