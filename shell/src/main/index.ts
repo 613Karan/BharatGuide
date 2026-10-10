@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { AgentCore } from '../agent/core';
 import { ClinePlanner } from '../agent/clinePlanner';
 import { DemoPlanner } from '../agent/demoPlanner';
+import { REGISTER_DEMO_MESSAGE, RegisterDemoPlanner } from '../agent/registerDemoPlanner';
 import { FallbackPlanner } from '../agent/fallbackPlanner';
 import type { Planner, PlannerDeps } from '../agent/planner';
 import type { Host } from '../agent/types';
@@ -31,8 +32,11 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 loadEnvFiles(app.getAppPath());
 const config = loadConfig();
 let agent: AgentCore | null = null;
-/** Next run uses the scripted ghost showcase ("/demo" or --demo). */
-let demoRequested = false;
+/**
+ * Next run uses a scripted planner: "tour" = ghost showcase ("/demo", --demo),
+ * "register" = real task, new voter registration ("/demo-register", --demo=register).
+ */
+let demoRequested: 'tour' | 'register' | null = null;
 // Contains "click" and "scroll" so the user-asked permissions apply to the demo.
 const DEMO_MESSAGE = 'Ghost demo: point, navigate, scroll, open a tab, click and switch back';
 
@@ -114,16 +118,29 @@ async function boot(): Promise<void> {
     now: () => Date.now(),
   };
 
-  const makePlanner = (deps: PlannerDeps): Planner =>
-    demoRequested && !(demoRequested = false)
-      ? new DemoPlanner(deps, tabs, logger)
-      : config.plannerImpl === 'fallback'
-      ? new FallbackPlanner({ baseUrl: config.plannerUrl, modelId: config.plannerModel, apiKey: config.plannerApiKey }, deps, logger)
+  const makePlanner = (deps: PlannerDeps): Planner => {
+    const demo = demoRequested;
+    demoRequested = null; // one-shot
+    if (demo === 'tour') return new DemoPlanner(deps, tabs, logger);
+    if (demo === 'register') return new RegisterDemoPlanner(deps, tabs, logger);
+    return config.plannerImpl === 'fallback'
+      ? new FallbackPlanner(
+          { baseUrl: config.plannerUrl, modelId: config.plannerModel, apiKey: config.plannerApiKey, reasoningEffort: config.plannerReasoning || undefined },
+          deps,
+          logger,
+        )
       : new ClinePlanner(
-          { providerId: config.plannerProviderId, modelId: config.plannerModel, baseUrl: config.plannerUrl, apiKey: config.plannerApiKey },
+          {
+            providerId: config.plannerProviderId,
+            modelId: config.plannerModel,
+            baseUrl: config.plannerUrl,
+            apiKey: config.plannerApiKey,
+            reasoningEffort: config.plannerReasoning || undefined,
+          },
           deps,
           logger,
         );
+  };
   agent = new AgentCore(host, makePlanner, config.searchCommandPhrases);
 
   wireIpc({ chatView, chatWindow, toolbarView, tabs, layout, logger, sendChat });
@@ -139,10 +156,11 @@ async function boot(): Promise<void> {
   void pollHealth(rag, sendChat);
   await tabs.openTab(config.startUrl).catch((error) => logger.warn('tabs', 'start url failed', { error: String(error) }));
 
-  if (process.argv.includes('--demo')) {
+  const demoArg = process.argv.includes('--demo') ? 'tour' : process.argv.includes('--demo=register') ? 'register' : null;
+  if (demoArg) {
     setTimeout(() => {
-      demoRequested = true;
-      void agent?.handleUserMessage(DEMO_MESSAGE);
+      demoRequested = demoArg;
+      void agent?.handleUserMessage(demoArg === 'register' ? REGISTER_DEMO_MESSAGE : DEMO_MESSAGE);
     }, Number(process.env.DEMO_DELAY_MS ?? 9000));
   }
 
@@ -177,9 +195,13 @@ function wireIpc({ chatView, chatWindow, toolbarView, tabs, layout, logger, send
     if (!isChat(event) || !command || typeof command !== 'object') return;
     if (command.t === 'send' && typeof command.text === 'string') {
       let text = command.text.slice(0, 2000);
-      if (text.trim().toLowerCase() === '/demo') {
-        demoRequested = true;
+      const slash = text.trim().toLowerCase();
+      if (slash === '/demo') {
+        demoRequested = 'tour';
         text = DEMO_MESSAGE;
+      } else if (slash === '/demo-register') {
+        demoRequested = 'register';
+        text = REGISTER_DEMO_MESSAGE;
       }
       tabs.focusPage(); // focus returns to the page after send (spec 7.1)
       void agent?.handleUserMessage(text).catch((error) => logger.error('agent', 'message failed', { error: String(error) }));

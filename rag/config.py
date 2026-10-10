@@ -47,6 +47,9 @@ class Settings:
     filter_active_only: bool = os.environ.get("FILTER_ACTIVE_ONLY", "1").strip().lower() in {"1", "true", "yes"}
     # Payload form_ids filter for "Form 6B"-style queries (spec 9.4 step 2).
     form_id_filter: bool = os.environ.get("FORM_ID_FILTER", "1").strip().lower() in {"1", "true", "yes"}
+    # Filter by payload org/doc_type. Collections without those indexed fields (eci_docs_small)
+    # make Qdrant return 400 "Index required", so set PAYLOAD_FILTERS=0 for them.
+    payload_filters: bool = os.environ.get("PAYLOAD_FILTERS", "1").strip().lower() in {"1", "true", "yes"}
     # Default org for points whose payload has no `org` (and no doc_meta entry).
     default_org: str = os.environ.get("DEFAULT_ORG", "ECI")
     # Fallback for "Last verified" when the payload has no retrieved_at.

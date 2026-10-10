@@ -14,6 +14,8 @@ export interface ShellConfig {
   plannerModel: string;
   plannerApiKey: string;
   plannerProviderId: string;
+  /** "none" disables the thinking pass (Ollama: ~1 s/step instead of ~20 s). Empty = model default. */
+  plannerReasoning: string;
   hotkey: string;
   searchCommandPhrases: string[];
   allowedHosts: string[];
@@ -67,6 +69,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ShellConfig {
     plannerModel: env.PLANNER_MODEL ?? (planner === 'ollama' ? 'gemma4:12b' : 'anthropic/claude-sonnet-4-6'),
     plannerApiKey: env.PLANNER_API_KEY ?? env.CLINE_API_KEY ?? (planner === 'ollama' ? 'ollama' : ''),
     plannerProviderId: env.PLANNER_PROVIDER_ID ?? 'openai-compatible',
+    plannerReasoning: env.PLANNER_REASONING ?? (planner === 'ollama' ? 'none' : ''),
     hotkey: env.HOTKEY ?? 'Ctrl+Shift+Space',
     searchCommandPhrases: list(env.SEARCH_COMMAND_PHRASES, ['search for', 'find']),
     allowedHosts: list(env.ALLOWED_HOSTS, DEFAULT_ALLOWED_HOSTS),

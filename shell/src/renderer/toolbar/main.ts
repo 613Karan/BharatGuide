@@ -35,12 +35,20 @@ function render(state: ToolbarState): void {
     close.className = 'close';
     close.textContent = '×';
     close.title = 'Close tab';
-    close.addEventListener('click', (e) => {
+    // Close on mousedown and stop it here: the tab's own mousedown (switch) used
+    // to fire first, re-render the strip and destroy this button before 'click'.
+    close.addEventListener('mousedown', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       api.send({ t: 'close', id: tab.id });
     });
     el.append(title, close);
-    el.addEventListener('mousedown', () => api.send({ t: 'switch', id: tab.id }));
+    el.addEventListener('mousedown', (e) => {
+      if ((e.target as HTMLElement).closest('.close')) return;
+      if (e.button === 1) api.send({ t: 'close', id: tab.id }); // middle-click closes, like a browser
+      else if (e.button === 0) api.send({ t: 'switch', id: tab.id });
+    });
+    el.addEventListener('auxclick', (e) => e.preventDefault());
     tabsEl.appendChild(el);
   }
   if (state.tabs.length < 6) {
@@ -98,6 +106,11 @@ forward.addEventListener('click', () => api.send({ t: 'forward' }));
 document.getElementById('reload')!.addEventListener('click', () => api.send({ t: 'reload' }));
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') api.send({ t: 'esc' });
+  // Ctrl+W closes the active tab (only when the address bar is not being edited).
+  if (e.ctrlKey && e.key.toLowerCase() === 'w' && current.activeId && document.activeElement !== address) {
+    e.preventDefault();
+    api.send({ t: 'close', id: current.activeId });
+  }
 });
 addEventListener('resize', reportRects);
 

@@ -31,11 +31,14 @@ const finish = createTool({
   },
 });
 
+// REASONING=none|low|... sets reasoningEffort (Ollama: "none" skips the thinking pass).
+const reasoning = process.env.REASONING;
 const agent = new Agent({
   providerId: 'openai-compatible',
   modelId: model,
   baseUrl,
   apiKey: 'ollama',
+  ...(reasoning ? { reasoningEffort: reasoning } : {}),
   systemPrompt: 'You are a browser guide. Act ONLY by calling tools. Never answer in plain text.',
   tools: [pointAt, finish],
   maxIterations: 4,
@@ -47,7 +50,7 @@ try {
   const result = await agent.run(
     'The page has element e7 = the "Register as new elector" button. Point at it with a short hint, then call finish.',
   );
-  console.log(JSON.stringify({ model, status: result.status, ms: Date.now() - t0, calls, events: [...events], error: result.error?.message }));
+  console.log(JSON.stringify({ model, reasoning: reasoning ?? 'default', status: result.status, ms: Date.now() - t0, calls: calls.map((c) => c.tool), reasoningEvents: events.has('assistant-reasoning-delta'), error: result.error?.message }));
 } catch (error) {
   console.log(JSON.stringify({ model, status: 'threw', ms: Date.now() - t0, calls, events: [...events], error: String(error) }));
 } finally {

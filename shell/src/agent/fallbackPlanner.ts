@@ -14,7 +14,7 @@ type Msg =
   | { role: 'tool'; tool_call_id: string; content: string };
 type ToolCall = { id: string; type: 'function'; function: { name: string; arguments: string } };
 
-export type FallbackModelConfig = { baseUrl: string; modelId: string; apiKey: string };
+export type FallbackModelConfig = { baseUrl: string; modelId: string; apiKey: string; reasoningEffort?: string };
 
 export class FallbackPlanner implements Planner {
   readonly name = 'fallback-loop';
@@ -46,7 +46,14 @@ export class FallbackPlanner implements Planner {
         const response = await this.fetchImpl(`${this.model.baseUrl.replace(/\/$/, '')}/chat/completions`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', authorization: `Bearer ${this.model.apiKey || 'none'}` },
-          body: JSON.stringify({ model: this.model.modelId, messages, tools, tool_choice: 'auto', temperature: 0.2 }),
+          body: JSON.stringify({
+            model: this.model.modelId,
+            messages,
+            tools,
+            tool_choice: 'auto',
+            temperature: 0.2,
+            ...(this.model.reasoningEffort ? { reasoning_effort: this.model.reasoningEffort } : {}),
+          }),
           signal: controller.signal,
         });
         if (!response.ok) throw new Error(`planner HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);

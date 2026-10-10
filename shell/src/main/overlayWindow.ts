@@ -4,7 +4,7 @@
  * bounds. It only receives OverlayCommand over IPC. Heartbeat every 2 s; if the
  * overlay stops answering, the agent halts (rule 2).
  */
-import { BrowserWindow, ipcMain, type BaseWindow } from 'electron';
+import { BrowserWindow, app, ipcMain, type BaseWindow } from 'electron';
 import { IPC, type OverlayCommand } from '../shared/ipc';
 import type { GhostPort, LoggerPort } from '../agent/types';
 import { preloadPath, rendererEntry } from './paths';
@@ -73,10 +73,17 @@ export class OverlayWindow implements GhostPort {
     const sync = (): void => this.syncBounds();
     for (const event of ['move', 'resize', 'maximize', 'unmaximize', 'restore'] as const) parent.on(event as 'move', sync);
     parent.on('minimize', () => this.win.isDestroyed() || this.win.hide());
-    // Whenever the main window comes back (restore, maximize, focus, show), bring the ghost back too.
-    for (const event of ['restore', 'maximize', 'focus', 'show'] as const) {
+    // Whenever the main window comes back (restore, maximize, show), bring the ghost back too.
+    for (const event of ['restore', 'maximize', 'show'] as const) {
       parent.on(event as 'restore', () => this.ensureVisible());
     }
+    // The ghost belongs to THIS app: hide it when the user switches to another
+    // app, show it again when they come back. Focus moves between our own
+    // windows (main <-> chat panel) count as "still in the app".
+    app.on('browser-window-blur', () => this.scheduleFocusCheck());
+    app.on('browser-window-focus', () => this.scheduleFocusCheck());
+    parent.on('blur', () => this.scheduleFocusCheck());
+    parent.on('focus', () => this.scheduleFocusCheck());
 
     ipcMain.on(IPC.overlayPong, (event) => {
       if (!this.win.isDestroyed() && event.sender.id === this.win.webContents.id) {
@@ -93,7 +100,10 @@ export class OverlayWindow implements GhostPort {
   start(): void {
     this.timer = setInterval(() => {
       if (this.win.isDestroyed()) return this.markDead('overlay destroyed');
-      if (this.parent.isMinimized()) {
+      // Safety net for missed focus events (e.g. the app launched behind another window).
+      this.scheduleFocusCheck();
+      if (this.parent.isMinimized() || !this.appActive) {
+        // Hidden on purpose (minimized / user is in another app): not a failure.
         this.lastPong = Date.now();
         return;
       }
@@ -134,9 +144,29 @@ export class OverlayWindow implements GhostPort {
     if (!this.win.isDestroyed()) this.win.webContents.reload();
   }
 
+  /** True while one of OUR windows (main window or chat panel) has OS focus. */
+  private appActive = true;
+  private focusTimer: NodeJS.Timeout | null = null;
+
+  private scheduleFocusCheck(): void {
+    // Blur fires before the next window's focus; wait a beat so main <-> chat
+    // panel focus hops don't flicker the ghost.
+    if (this.focusTimer) clearTimeout(this.focusTimer);
+    this.focusTimer = setTimeout(() => {
+      const focused = BrowserWindow.getFocusedWindow();
+      const active = (this.parent.isFocused?.() ?? false) || (focused !== null && focused !== this.win);
+      if (active === this.appActive) return;
+      this.appActive = active;
+      if (this.win.isDestroyed()) return;
+      if (active) this.ensureVisible();
+      else this.win.hide();
+    }, 120);
+  }
+
   /** Re-show the overlay (on top, click-through) if the main window is visible. */
   ensureVisible(): void {
     if (this.win.isDestroyed() || this.parent.isDestroyed()) return;
+    if (!this.appActive) return; // another app is in front: stay hidden
     if (this.parent.isMinimized() || !this.parent.isVisible()) return;
     this.syncBounds();
     if (this.win.isMinimized()) this.win.restore();
@@ -145,11 +175,21 @@ export class OverlayWindow implements GhostPort {
     this.win.setIgnoreMouseEvents(true);
   }
 
-  /** Rule 2: the agent may act only while the ghost can actually be seen. */
+  /**
+   * Rule 2: the agent may act only while the ghost can actually be seen.
+   * While another app is in front the ghost is hidden ON PURPOSE, so the agent
+   * must not act then either (it waits / halts instead of acting unseen).
+   */
   get alive(): boolean {
     if (this.dead || this.win.isDestroyed() || !this.ready) return false;
+    if (!this.appActive) return false;
     if (!this.win.isVisible()) this.ensureVisible();
     return this.win.isVisible();
+  }
+
+  /** Heartbeat should not report "dead" just because the user is in another app. */
+  get hiddenByUser(): boolean {
+    return !this.appActive;
   }
 
   private send(command: OverlayCommand): void {

@@ -43,6 +43,8 @@ export type WaitEvent = 'focus' | 'click' | 'input' | 'navigation' | 'any';
 
 export interface GhostPort {
   readonly alive: boolean;
+  /** True while the ghost is hidden on purpose because the user switched to another app. */
+  readonly hiddenByUser?: boolean;
   move(x: number, y: number, ms: number): void;
   pulse(x: number, y: number): void;
   ripple(x: number, y: number): void;

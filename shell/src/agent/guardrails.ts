@@ -85,6 +85,18 @@ export function flightMs(from: Point | null, to: Point): number {
  * overlay is gone (rule 2).
  */
 export async function telegraph(host: Host, ctx: TaskContext, to: Point, hint?: string, pulse = true): Promise<void> {
+  if (host.ghost.hiddenByUser) {
+    // The user switched to another app: the ghost is hidden on purpose. Pause
+    // (never act unseen) until they come back, instead of halting the task.
+    host.chat.emit({ t: 'status', text: 'Paused. Come back to this window to continue.' });
+    host.logger.info('agent', 'paused: app not focused');
+    while (host.ghost.hiddenByUser) {
+      await host.sleep(250, ctx.signal);
+      throwIfAborted(ctx.signal);
+    }
+    host.chat.emit({ t: 'status', text: null });
+    await host.sleep(300, ctx.signal); // let the overlay re-show
+  }
   if (!host.ghost.alive) {
     // Give a just-started or just-restored overlay a moment to come back before halting.
     await host.sleep(600, ctx.signal);

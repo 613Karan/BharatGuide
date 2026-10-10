@@ -82,6 +82,8 @@ def build_filter(
     must: list[models.Condition] = []
     if settings.filter_active_only:
         must.append(models.FieldCondition(key="status", match=models.MatchValue(value=status)))
+    if not settings.payload_filters:
+        org, doc_types = None, None
     if org:
         must.append(models.FieldCondition(key="org", match=models.MatchValue(value=org)))
     types = [t for t in (doc_types or []) if t]

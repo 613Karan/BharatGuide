@@ -12,6 +12,7 @@
  * dynamic import() (Rollup keeps import() for externals in CJS output).
  */
 import { MAX_ITERATIONS, SYSTEM_PROMPT, userTurn, type Planner, type PlannerDeps } from './planner';
+import { createFastModel } from './fastModel';
 import { jsonSchemaFor } from './schema';
 import { ALL_TOOLS } from './tools';
 import type { LoggerPort, TaskContext } from './types';
@@ -21,6 +22,8 @@ export type ClineModelConfig = {
   modelId: string;
   baseUrl: string;
   apiKey: string;
+  /** Set for local Ollama ("none" = no thinking pass): routes through createFastModel. */
+  reasoningEffort?: string;
 };
 
 type SdkModule = typeof import('@cline/sdk');
@@ -61,16 +64,25 @@ export class ClinePlanner implements Planner {
       }),
     );
 
-    const agent = new sdk.Agent({
-      providerId: this.model.providerId,
-      modelId: this.model.modelId,
-      baseUrl: this.model.baseUrl,
-      apiKey: this.model.apiKey,
-      systemPrompt: SYSTEM_PROMPT,
-      tools,
-      maxIterations: MAX_ITERATIONS,
-      toolExecution: 'sequential',
-    });
+    const common = { systemPrompt: SYSTEM_PROMPT, tools, maxIterations: MAX_ITERATIONS, toolExecution: 'sequential' as const };
+    // Local Ollama: use the fast model (thinking off, ~1 s/step instead of ~20 s).
+    // Otherwise let the SDK build the provider model itself.
+    // `Agent` is the same class as AgentRuntime; it accepts a pre-built model (advanced form).
+    const agent = this.model.reasoningEffort
+      ? new sdk.Agent({
+          ...common,
+          model: createFastModel(
+            { baseUrl: this.model.baseUrl, modelId: this.model.modelId, apiKey: this.model.apiKey, reasoningEffort: this.model.reasoningEffort },
+            this.logger,
+          ),
+        })
+      : new sdk.Agent({
+          ...common,
+          providerId: this.model.providerId,
+          modelId: this.model.modelId,
+          baseUrl: this.model.baseUrl,
+          apiKey: this.model.apiKey,
+        });
     this.agent = agent;
 
     let freeText = '';
