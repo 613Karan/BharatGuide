@@ -261,6 +261,23 @@ export class TabManager implements BrowserPort {
       await bridge.scrollBy(deltaY).catch(() => undefined);
     }
   }
+  async findByText(query: string): Promise<{ id: string; name: string; score: number } | null> {
+    if (!this.active) return null;
+    try {
+      return await this.active.bridge.findByText(query);
+    } catch (error) {
+      this.logger.warn('tabs', 'findByText failed', { error: String(error) });
+      return null;
+    }
+  }
+  async similarLabels(query: string): Promise<string[]> {
+    if (!this.active) return [];
+    try {
+      return await this.active.bridge.similarLabels(query);
+    } catch {
+      return [];
+    }
+  }
   async scrollIntoView(elementId: string): Promise<boolean> {
     if (!this.active) return false;
     try {

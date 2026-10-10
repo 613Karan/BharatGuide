@@ -21,6 +21,11 @@ import { STATUS_THINKING } from './status';
 import { GrantStore } from './typingGrant';
 import type { Host, TaskContext } from './types';
 
+/** Page labels shown in chat/hints: one line, short, no quote marks (keeps the fact guard out of UI text). */
+function clip(label: string): string {
+  return label.replace(/\s+/g, ' ').replace(/["“”'‘’]/g, '').trim().slice(0, 60);
+}
+
 export const DOUBLE_ESC_MS = 800;
 export type PlannerFactory = (deps: PlannerDeps) => Planner;
 
@@ -112,6 +117,15 @@ export class AgentCore {
 
     this.host.chat.emit({ t: 'status', text: STATUS_THINKING });
     this.showGhostAtRest(ctx);
+    // "Guide me to X": find X on the page and point, in code. Only if it is not
+    // on the page does the planner (model) take over.
+    if (intent.kind === 'guidance' && intent.locate && (await this.locateOnPage(intent.locate, ctx))) {
+      this.history.push(`user asked: ${clean.slice(0, 160)} (pointed at it)`);
+      this.host.chat.emit({ t: 'status', text: null });
+      if (this.machine.state !== 'Halted') this.machine.apply('finish');
+      if (this.task === ctx) this.task = null;
+      return;
+    }
     const run = this.runPlanner(clean, ctx, grantedTitle);
     this.running = run;
     await run;
@@ -157,6 +171,47 @@ export class AgentCore {
       }
       if (this.task === ctx) this.task = null;
     }
+  }
+
+  /** Point at a visible label through the guarded executor. true = handled. */
+  private async locateOnPage(target: string, ctx: TaskContext): Promise<boolean> {
+    const halt: HaltFn = (reason, detail) => this.halt(reason, detail);
+    const hit = await this.host.browser.findByText(target).catch(() => null);
+    const similar = hit ? [] : await this.host.browser.similarLabels(target).catch(() => [] as string[]);
+    this.host.logger.info('agent', 'locate', { target, found: Boolean(hit), name: hit?.name, score: hit?.score, similar });
+
+    if (!hit) {
+      if (!similar.length) return false; // nothing related here: let the planner help
+      // No exact match, but related options exist (e.g. "Track Appeal" for
+      // "submit appeal"). Say so honestly, point at the closest one, list the rest.
+      const closest = await this.host.browser.findByText(similar[0]).catch(() => null);
+      if (closest) {
+        const out = await runTool('point_at', { target_area: 'page', target_id: closest.id, hint: `Closest match: ${clip(similar[0])}` }, ctx, this.host, halt);
+        if (out.stop) return true;
+      }
+      const list = similar.map((s) => `- ${clip(s)}`).join('\n');
+      await runTool(
+        'finish',
+        { message: `I couldn't find an option called **${clip(target)}** on this page. The closest options here are:\n${list}\nThe ghost is pointing at the first one. Ask me about any of them.` },
+        ctx,
+        this.host,
+        halt,
+      );
+      return true;
+    }
+
+    const label = clip(hit.name);
+    const out = await runTool('point_at', { target_area: 'page', target_id: hit.id, hint: `Here: ${label}` }, ctx, this.host, halt);
+    if (out.error || out.stop) return Boolean(out.stop);
+    const sensitive = Boolean(out.sensitive);
+    await runTool(
+      'finish',
+      { message: sensitive ? `That's **${label}**. Please fill it in yourself.` : `That's **${label}**, where the ghost is pointing. Click it when you're ready.` },
+      ctx,
+      this.host,
+      halt,
+    );
+    return true;
   }
 
   /**

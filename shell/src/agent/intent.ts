@@ -4,7 +4,25 @@
  */
 export type Intent =
   | { kind: 'search_command'; title: string }
-  | { kind: 'guidance'; userAskedClick: boolean; userAskedScroll: boolean };
+  | { kind: 'guidance'; userAskedClick: boolean; userAskedScroll: boolean; locate?: string };
+
+/**
+ * "guide me to the submit appeal option", "where is Fill Form 6", "show me the
+ * login button" -> "submit appeal". A pure where-is-it request about the page,
+ * answered in code by finding the label and pointing (no model needed).
+ */
+export function locateTarget(message: string): string | null {
+  const text = message.trim().replace(/[?.!]+$/, '');
+  const m =
+    /^(?:please\s+|can you\s+|could you\s+)?(?:guide me to|take me to|point me to|point to|point at|show me|navigate me to|lead me to|help me find|where is|where's|where do i find|how do i get to)\s+(.+)$/i.exec(text);
+  if (!m) return null;
+  const target = m[1]
+    .replace(/^(?:the|a|an)\s+/i, '')
+    .replace(/\s+(?:option|button|link|tab|section|menu|page|on this page|here)$/i, '')
+    .replace(/["“”'‘’]/g, '')
+    .trim();
+  return target.length >= 3 && target.length <= 80 ? target : null;
+}
 
 function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -25,9 +43,11 @@ export function classifyIntent(message: string, phrases: string[]): Intent {
     if (title && title.length <= 120 && !looksLikeUi) return { kind: 'search_command', title };
   }
   const lowered = text.toLowerCase();
+  const locate = locateTarget(text);
   return {
     kind: 'guidance',
     userAskedClick: /\b(click|press|tap|open it|select it|choose it)\b/.test(lowered),
     userAskedScroll: /\bscroll\b/.test(lowered),
+    ...(locate ? { locate } : {}),
   };
 }

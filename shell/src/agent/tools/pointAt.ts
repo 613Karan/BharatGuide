@@ -1,12 +1,18 @@
 import { z } from 'zod';
 import { center, checkUserFacingText, describePage, telegraph } from '../guardrails';
-import type { ToolDef } from '../types';
+import type { Host, ToolDef } from '../types';
 
 const schema = z.object({
   target_area: z.enum(['page', 'toolbar']).describe('"page" for an element of the web page, "toolbar" for the browser toolbar'),
   target_id: z
     .string()
+    .optional()
     .describe('page: element id from <page> like "e12". toolbar: "address_bar", "back", "forward", "reload", "new_tab" or "tab:<tab id>"'),
+  target_text: z
+    .string()
+    .max(80)
+    .optional()
+    .describe('page only: the visible label to find, e.g. "Submit Appeal". Use this when the element is not listed in <page>; the whole page is searched.'),
   hint: z.string().min(1).max(140).describe('One short line shown next to the ghost, e.g. "Click here to register"'),
   kind: z.enum(['ui', 'fact']).default('ui'),
   source_ids: z.array(z.string()).optional(),
@@ -17,22 +23,45 @@ const SELF_HINT = /yourself|you (need|have) to|please (enter|type|fill|do)/i;
 export const pointAt: ToolDef<z.infer<typeof schema>> = {
   name: 'point_at',
   description:
-    'Fly the ghost cursor to an element and show a one-line hint. If the element is off screen the page scrolls it into view first. Never clicks. For login/OTP/Aadhaar/EPIC/payment fields, point and tell the user to do it themselves.',
+    'Fly the ghost cursor to an element and show a one-line hint. Give target_id from <page>, or target_text with the visible label (e.g. "Submit Appeal") to search the whole page, including parts not listed in <page>. Off-screen elements are scrolled into view first. Never clicks. For login/OTP/Aadhaar/EPIC/payment fields, point and tell the user to do it themselves.',
   schema,
   async execute(input, ctx, host) {
     let hint = input.hint.trim();
-    const check = checkUserFacingText(hint, input.kind, input.source_ids, ctx.chunks);
+    // Quoting a label that is visible on the page ("Click 'Submit Appeal'") is UI
+    // guidance, not a sourced fact: remove those quotes before the fact check.
+    const labels = await pageLabels(host, input.target_text);
+    const check = checkUserFacingText(unquotePageLabels(hint, labels), input.kind, input.source_ids, ctx.chunks);
     if (!check.ok) return { error: `hint rejected: ${check.reason}` };
 
     if (input.target_area === 'toolbar') {
-      const rect = host.browser.toolbarRect(input.target_id);
-      if (!rect) return { error: `unknown toolbar target "${input.target_id}"` };
+      const rect = input.target_id ? host.browser.toolbarRect(input.target_id) : null;
+      if (!rect) return { error: `unknown toolbar target "${input.target_id ?? ''}"` };
       await telegraph(host, ctx, center(rect), hint);
       return { ok: true, pointed: input.target_id };
     }
 
-    let info = await host.browser.elementInfo(input.target_id);
-    if (!info.found) return { error: `element ${input.target_id} is not on the current page; use an id from the latest <page>` };
+    // Resolve the element: by id from <page>, else by visible text across the
+    // whole page (the snapshot lists only 60 elements, so far-down links like
+    // "Submit Appeal" may be missing from it). Models also guess ids ("e1"),
+    // so an unknown id falls back to the text, or to the hint wording.
+    let targetId = input.target_id;
+    let info = targetId ? await host.browser.elementInfo(targetId) : ({ found: false } as const);
+    let matched: string | undefined;
+    if (!info.found) {
+      const text = input.target_text || stripHint(hint);
+      const hit = text ? await host.browser.findByText(text) : null;
+      if (!hit) {
+        return {
+          error: `could not find "${text || targetId}" on this page. Check the latest <page>, use target_text with the exact visible label, or tell the user it is not on this page`,
+          page: describePage(await host.browser.snapshot()),
+        };
+      }
+      targetId = hit.id;
+      matched = hit.name;
+      info = await host.browser.elementInfo(targetId);
+      if (!info.found) return { error: `"${text}" disappeared from the page; take a fresh look` };
+    }
+    const id = targetId as string;
     const origin = host.browser.pageOrigin();
     const size = host.browser.pageSize();
     let scrolled: 'up' | 'down' | undefined;
@@ -46,10 +75,10 @@ export const pointAt: ToolDef<z.infer<typeof schema>> = {
       const y = origin.y + (below ? size.height - 30 : 30);
       await telegraph(host, ctx, { x, y }, below ? 'Scrolling down' : 'Scrolling up', false);
       host.ghost.ripple(x, y);
-      await host.browser.scrollIntoView(input.target_id);
+      await host.browser.scrollIntoView(id);
       await host.sleep(700, ctx.signal); // smooth scroll settles
-      info = await host.browser.elementInfo(input.target_id);
-      if (!info.found) return { error: `element ${input.target_id} disappeared after scrolling; take a fresh look at the page` };
+      info = await host.browser.elementInfo(id);
+      if (!info.found) return { error: `element ${id} disappeared after scrolling; take a fresh look at the page` };
       if (!info.inViewport) {
         await telegraph(host, ctx, { x, y }, below ? 'Scroll down' : 'Scroll up');
         return { ok: true, offscreen: true, note: `could not scroll the element into view; the user was asked to scroll ${scrolled}` };
@@ -58,9 +87,42 @@ export const pointAt: ToolDef<z.infer<typeof schema>> = {
     if (info.sensitive && !SELF_HINT.test(hint)) hint = `${hint} (please do this yourself)`;
     const c = center(info.rect);
     await telegraph(host, ctx, { x: origin.x + c.x, y: origin.y + c.y }, hint);
-    const extra = scrolled ? { scrolled, page: describePage(await host.browser.snapshot()) } : {};
+    const extra = {
+      ...(matched ? { matched_label: matched } : {}),
+      ...(scrolled ? { scrolled, page: describePage(await host.browser.snapshot()) } : {}),
+    };
     return info.sensitive
-      ? { ok: true, sensitive: true, ...extra, note: 'sensitive field: the user must fill this themselves; never click or type here' }
-      : { ok: true, pointed: input.target_id, ...extra };
+      ? { ok: true, pointed: id, sensitive: true, ...extra, note: 'sensitive field: the user must fill this themselves; never click or type here' }
+      : { ok: true, pointed: id, ...extra };
   },
 };
+
+const QUOTED_LABEL = /["“'‘]([^"”'’]{2,80})["”'’]/g;
+
+/** Visible labels on the current page (+ the requested target text, which is verified by findByText). */
+async function pageLabels(host: Host, targetText?: string): Promise<string[]> {
+  const snap = await host.browser.snapshot().catch(() => null);
+  const names = (snap?.elements ?? []).map((e) => e.name.toLowerCase());
+  return targetText ? [...names, targetText.toLowerCase()] : names;
+}
+
+/** Drop the quote marks around text that is a visible page label, so it is not treated as a quoted fact. */
+export function unquotePageLabels(hint: string, labels: string[]): string {
+  return hint.replace(QUOTED_LABEL, (whole, inner: string) => {
+    const label = inner.trim().toLowerCase();
+    return labels.some((l) => l.includes(label)) ? inner : whole;
+  });
+}
+
+/** "Click here to submit an appeal" -> "submit an appeal": the hint usually names the target. */
+export function stripHint(hint: string): string {
+  return hint
+    .replace(/\(please do this yourself\)/i, '')
+    .replace(/["“”'‘’]/g, '')
+    .replace(/^(click|tap|press|select|open|choose|go to|use|find)\s+(on\s+)?(here\s+)?(to\s+)?/i, '')
+    .replace(/^(this|here)\s+(is|to)\s+/i, '')
+    .replace(/\s+(here|now|below|above)\.?$/i, '')
+    .replace(/[.!]+$/, '')
+    .trim()
+    .slice(0, 80);
+}

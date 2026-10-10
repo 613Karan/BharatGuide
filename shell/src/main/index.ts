@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Electron main entry. Boot: config -> logger -> main window (toolbar, page,
  * chat views) -> ghost overlay window -> tab manager -> RAG client -> agent.
  * Renderers hold no secrets (rule 12); the service token stays here.
  */
-import { Menu, app, globalShortcut, ipcMain, session } from 'electron';
+import { Menu, app, globalShortcut, ipcMain, session, webContents } from 'electron';
 import { join } from 'node:path';
 import { AgentCore } from '../agent/core';
 import { ClinePlanner } from '../agent/clinePlanner';
@@ -155,6 +155,28 @@ async function boot(): Promise<void> {
 
   void pollHealth(rag, sendChat);
   await tabs.openTab(config.startUrl).catch((error) => logger.warn('tabs', 'start url failed', { error: String(error) }));
+
+  // Diagnostic hook: `--dump-labels` logs every clickable label on the start page.
+  if (process.argv.includes('--dump-labels')) {
+    setTimeout(() => {
+      void tabs
+        .snapshot()
+        .then(async () => {
+          const wc = webContents.getAllWebContents().find((w) => w.getURL().startsWith(config.startUrl.replace(/\/$/, '')));
+          const labels = (await wc?.executeJavaScript(
+            `Array.from(document.querySelectorAll('a,button,[role=button],[role=link],h1,h2,h3,h4')).map(e => (e.innerText||e.textContent||'').replace(/\\s+/g,' ').trim()).filter(t => t && t.length < 90)`,
+          )) as string[] | undefined;
+          logger.info('diag', 'labels', { count: labels?.length ?? 0, labels: [...new Set(labels ?? [])].slice(0, 250) });
+        })
+        .catch((error) => logger.warn('diag', 'labels failed', { error: String(error) }));
+    }, Number(process.env.DEMO_DELAY_MS ?? 9000));
+  }
+
+  // Test hook: `--ask="guide me to ..."` sends one chat message after load (live model runs).
+  const ask = process.argv.find((a) => a.startsWith('--ask='))?.slice('--ask='.length);
+  if (ask) {
+    setTimeout(() => void agent?.handleUserMessage(ask.slice(0, 500)), Number(process.env.DEMO_DELAY_MS ?? 9000));
+  }
 
   const demoArg = process.argv.includes('--demo') ? 'tour' : process.argv.includes('--demo=register') ? 'register' : null;
   if (demoArg) {

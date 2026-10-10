@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import { checkUrl } from '../allowlist';
 import type { ToolDef } from '../types';
 import { pageAfterLoad, telegraphAddressBar } from './navigation';
@@ -17,6 +17,6 @@ export const openTab: ToolDef<z.infer<typeof schema>> = {
     }
     await telegraphAddressBar(host, ctx, check.url);
     const id = await host.browser.openTab(check.url);
-    return { ok: true, tab_id: id, page: await pageAfterLoad(host) };
+    return { ok: true, tab_id: id, page: await pageAfterLoad(host, ctx.signal) };
   },
 };

@@ -14,6 +14,22 @@ export async function telegraphAddressBar(host: Host, ctx: TaskContext, url: str
   }
 }
 
-export async function pageAfterLoad(host: Host): Promise<string> {
-  return describePage(await host.browser.snapshot());
+/**
+ * Snapshot after a load. Single-page portals (voters.eci.gov.in) fire "load"
+ * before their app renders the links, so wait until the element count stops
+ * growing (max ~6 s) instead of describing a near-empty page.
+ */
+export async function pageAfterLoad(host: Host, signal?: AbortSignal): Promise<string> {
+  let snap = await host.browser.snapshot();
+  let last = snap?.elements.length ?? 0;
+  for (let i = 0; i < 12; i += 1) {
+    if (last >= 15 && i >= 2) break; // enough content and stable for a moment
+    await host.sleep(500, signal);
+    const next = await host.browser.snapshot();
+    const count = next?.elements.length ?? 0;
+    snap = next ?? snap;
+    if (count === last && count >= 5 && i >= 3) break;
+    last = count;
+  }
+  return describePage(snap);
 }

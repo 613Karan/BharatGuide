@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import { checkUrl } from '../allowlist';
 import type { ToolDef } from '../types';
 import { pageAfterLoad, telegraphAddressBar } from './navigation';
@@ -19,6 +19,6 @@ export const navigate: ToolDef<z.infer<typeof schema>> = {
       await telegraphAddressBar(host, ctx, check.url);
       await host.browser.navigate(check.url);
     }
-    return { ok: true, page: await pageAfterLoad(host) };
+    return { ok: true, page: await pageAfterLoad(host, ctx.signal) };
   },
 };

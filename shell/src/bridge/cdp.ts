@@ -10,10 +10,12 @@ import {
   ISOLATED_WORLD,
   SCROLL_Y_SCRIPT,
   elementInfoScript,
+  findByTextScript,
   focusSearchScript,
   scrollByScript,
   scrollIntoViewScript,
   searchValueScript,
+  similarLabelsScript,
 } from './pageHelpers';
 import { LISTENER_SCRIPT } from './pageListener';
 import { SNAPSHOT_SCRIPT } from './snapshotScript';
@@ -118,6 +120,14 @@ export class CdpBridge {
       deltaX: 0,
       deltaY: Math.round(deltaY),
     });
+  }
+
+  async findByText(query: string): Promise<{ id: string; name: string; score: number } | null> {
+    return this.readEval<{ id: string; name: string; score: number } | null>(findByTextScript(query));
+  }
+
+  async similarLabels(query: string): Promise<string[]> {
+    return (await this.readEval<string[]>(similarLabelsScript(query))) ?? [];
   }
 
   async scrollIntoView(elementId: string): Promise<boolean> {

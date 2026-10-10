@@ -54,6 +54,23 @@ export class FakeBrowser implements BrowserPort {
   animateUrl(url: string) { this.actions.push(`animate:${url}`); }
   async click(x: number, y: number) { this.actions.push(`click:${x},${y}`); }
   async wheel(_x: number, _y: number, dy: number) { this.actions.push(`wheel:${dy}`); }
+  /** Elements present on the page but NOT in the 60-element snapshot (found only by findByText). */
+  hidden: SnapElement[] = [];
+  async findByText(query: string) {
+    const q = query.toLowerCase();
+    const pool = [...(this.snap?.elements ?? []), ...this.hidden];
+    const hit = pool.find((e) => q.split(/\s+/).filter((w) => w.length > 2).every((w) => e.name.toLowerCase().includes(w)));
+    if (!hit) return null;
+    if (this.snap && !this.snap.elements.includes(hit)) this.snap = { ...this.snap, elements: [...this.snap.elements, hit] };
+    return { id: hit.id, name: hit.name, score: 80 };
+  }
+  async similarLabels(query: string) {
+    const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+    return [...(this.snap?.elements ?? []), ...this.hidden]
+      .filter((e) => ['link', 'button'].includes(e.role) && words.some((w) => e.name.toLowerCase().includes(w)))
+      .map((e) => e.name)
+      .slice(0, 4);
+  }
   /** false = simulate a page that refuses to scroll (element stays off screen). */
   canScroll = true;
   async scrollIntoView(id: string) {

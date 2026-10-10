@@ -33,6 +33,10 @@ export interface BrowserPort {
   wheel(pageX: number, pageY: number, deltaY: number): Promise<void>;
   /** Smoothly bring an element to the middle of the viewport. Reveals only: never clicks. */
   scrollIntoView(elementId: string): Promise<boolean>;
+  /** Best element on the whole page whose visible label matches the text (tags it with an id). */
+  findByText(query: string): Promise<{ id: string; name: string; score: number } | null>;
+  /** Clickable labels that share words with the query ("did you mean ..."). */
+  similarLabels(query: string): Promise<string[]>;
   focusSearch(elementId: string): Promise<boolean>;
   insertText(text: string): Promise<void>;
   searchValue(elementId: string): Promise<string | null>;

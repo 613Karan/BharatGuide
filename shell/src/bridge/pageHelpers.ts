@@ -104,6 +104,72 @@ export function scrollByScript(dy: number): string {
 
 export const SCROLL_Y_SCRIPT = `(() => (document.scrollingElement || document.documentElement).scrollTop)()`;
 
+/**
+ * Find the element whose visible label best matches `query`, searching the
+ * WHOLE page (not just the 60-element snapshot, which cuts off links further
+ * down). Tags the winner with a data-gg-id and returns { id, name, score } or
+ * null. Read-only apart from that tag attribute.
+ */
+export function findByTextScript(query: string): string {
+  return `(() => {
+    ${SHARED_HELPERS}
+    const SELECTOR = 'a[href],button,input[type=submit],input[type=button],summary,[role=button],[role=link],[role=tab],[role=menuitem],[onclick],h1,h2,h3,h4,label,input:not([type=hidden]),select,textarea';
+    const norm = (s) => clean(s).toLowerCase().replace(/[^a-z0-9\\u0900-\\u097f ]+/g, ' ').replace(/\\s+/g, ' ').trim();
+    const STOP = new Set(['the','a','an','to','of','for','option','button','link','page','on','my','me','please','click','here']);
+    const q = norm(${JSON.stringify(query)});
+    const tokens = q.split(' ').filter((t) => t && !STOP.has(t));
+    if (!tokens.length) return null;
+    const stem = (t) => t.replace(/(ing|ion|s)$/,'');
+    const nameOf = (el) => clean(labelOf(el) || el.innerText || el.textContent || el.getAttribute('title') || el.getAttribute('placeholder') || el.value || (el.querySelector && el.querySelector('img[alt]') && el.querySelector('img[alt]').getAttribute('alt')) || '');
+    let best = null;
+    for (const el of document.querySelectorAll(SELECTOR)) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      const st = getComputedStyle(el);
+      if (st.visibility === 'hidden' || st.display === 'none') continue;
+      const name = nameOf(el).slice(0, 160);
+      const n = norm(name);
+      if (!n || n.length > 140) continue;
+      const words = n.split(' ').map(stem);
+      const hits = tokens.filter((t) => n.includes(t) || words.includes(stem(t))).length;
+      if (!hits) continue;
+      let score = (hits / tokens.length) * 60;
+      if (n === q) score += 40; else if (n.includes(q)) score += 25;
+      score -= Math.min(15, Math.max(0, words.length - tokens.length) * 1.5); // prefer short, specific labels
+      const tag = el.tagName.toLowerCase();
+      if (tag === 'a' || tag === 'button' || /button|link|menuitem|tab/.test(el.getAttribute('role') || '')) score += 8;
+      if (/^h[1-4]$/.test(tag) || tag === 'label') score -= 4;
+      if (!best || score > best.score) best = { el, name, score };
+    }
+    if (!best || best.score < 35) return null;
+    let id = best.el.getAttribute('data-gg-id');
+    if (!id) { window.__ggSeq = (window.__ggSeq || 0) + 1; id = 'e' + window.__ggSeq; best.el.setAttribute('data-gg-id', id); }
+    return { id, name: best.name, score: Math.round(best.score) };
+  })()`;
+}
+
+/** Up to 4 clickable labels sharing at least one word with `query` (for "did you mean"). */
+export function similarLabelsScript(query: string): string {
+  return `(() => {
+    const clean = (s) => String(s || '').replace(/\\s+/g, ' ').trim();
+    const norm = (s) => clean(s).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ');
+    const STOP = new Set(['the','a','an','to','of','for','option','button','link','page','on','my','me','in','and']);
+    const tokens = norm(${JSON.stringify(query)}).split(' ').filter((t) => t.length > 2 && !STOP.has(t));
+    const seen = new Set(), out = [];
+    // Headings too: portals like voters.eci.gov.in title service cards ("Track Appeal") with h3/h4, not links.
+    for (const el of document.querySelectorAll('a[href],button,[role=button],[role=link],[role=menuitem],[onclick],h2,h3,h4,h5')) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      const name = clean(el.innerText || el.textContent || el.getAttribute('aria-label') || '');
+      const n = norm(name);
+      if (!name || name.length > 70 || seen.has(n)) continue;
+      const hits = tokens.filter((t) => n.split(' ').some((w) => w.startsWith(t.slice(0, 5)))).length;
+      if (hits) { seen.add(n); out.push({ name, hits }); }
+    }
+    return out.sort((a, b) => b.hits - a.hits || a.name.length - b.name.length).slice(0, 4).map((x) => x.name);
+  })()`;
+}
+
 /** Focus the granted search field and clear it so insertText types exactly the title. */
 export function focusSearchScript(elementId: string): string {
   return `(() => {
