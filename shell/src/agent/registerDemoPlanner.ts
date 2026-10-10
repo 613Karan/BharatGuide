@@ -16,6 +16,10 @@ const PORTAL = 'https://voters.eci.gov.in/';
 const SENSITIVE_NAME = /mobile|phone|otp|password|captcha|aadhaa?r|epic/i;
 
 export const REGISTER_DEMO_MESSAGE = 'I just turned 18. Help me register as a new voter.';
+/** First query of the judges run (starts on google.com, then hands over to live mode). */
+export const JUDGES_DEMO_MESSAGE = 'I am 18 and a new voter, how to register?';
+
+export type RegisterDemoVariant = 'register' | 'judges';
 
 export const REGISTER_ANSWER = [
   'New voters apply with **Form 6** (Application Form for New Voters).',
@@ -33,7 +37,19 @@ export class RegisterDemoPlanner implements Planner {
     private readonly deps: PlannerDeps,
     private readonly browser: BrowserPort,
     private readonly logger: LoggerPort,
+    private readonly variant: RegisterDemoVariant = 'register',
   ) {}
+
+  /** Judges run: walk through the Form 6 card (who it is for, guidelines, offline form). */
+  private async tourForm6Card(go: (name: string, input: unknown, pause?: number) => Promise<boolean>, sourceIds: string[]): Promise<boolean> {
+    // The portal labels these buttons via aria-label ("Read Guidelines for filling Form 6").
+    // "\b(?!A)" keeps Form 6A (NRI voters) out.
+    const guide = await this.findLink(/guidelines.*form 6\b(?!a)|^guidelines$/i);
+    if (guide && !(await go('point_at', { target_area: 'page', target_id: guide.id, hint: 'First, read the official Form 6 guidelines here', kind: 'fact', source_ids: sourceIds }, 2200))) return false;
+    const offline = await this.findLink(/download.*form 6\b(?!a)|^download$/i);
+    if (offline && !(await go('point_at', { target_area: 'page', target_id: offline.id, hint: 'Prefer paper? Download the Form 6 PDF here', kind: 'fact', source_ids: sourceIds }, 2200))) return false;
+    return true;
+  }
 
   private async elements(): Promise<SnapElement[]> {
     return (await this.browser.snapshot())?.elements ?? [];
@@ -71,10 +87,17 @@ export class RegisterDemoPlanner implements Planner {
   private async step(name: string, input: unknown, pause = PAUSE_MS): Promise<{ go: boolean; out: Record<string, unknown> }> {
     if (this.cancelled) return { go: false, out: {} };
     const out = (await this.deps.exec(name, input)) as Record<string, unknown>;
-    this.logger.info('demo', name, { ok: !out.error, error: out.error });
+    this.logger.info('demo', name, { ok: !out.error, error: out.error, user_did: out.user_did, element_name: out.element_name, timed_out: out.timed_out });
     if (out.stop) return { go: false, out };
     if (pause) await new Promise((r) => setTimeout(r, pause));
     return { go: !this.cancelled, out };
+  }
+
+  /** Judges run: after the scripted part, tell the user the floor is theirs (live planner from here). */
+  private handover(): string {
+    return this.variant === 'judges'
+      ? ' That was the guided part. Now you are in control: type your own question below, like which documents prove my address, or guide me to track appeal.'
+      : '';
   }
 
   cancel(): void {
@@ -109,13 +132,17 @@ export class RegisterDemoPlanner implements Planner {
     if (!(await go('navigate', { url: PORTAL }, 2500))) return;
     const form6 = await this.waitForLink(/fill form 6\b|new voter registration|form 6\b/i);
     if (!form6) {
-      await go('finish', { message: 'The portal is open. Look for the Form 6 (new voter registration) option on the home page.', source_ids: sources() }, 0);
+      await go('finish', { message: 'The portal is open. Look for the Form 6 (new voter registration) option on the home page.' + this.handover(), source_ids: sources() }, 0);
       return;
     }
-    // Show where to track the application later. It sits lower on the page, so
-    // point_at scrolls it into view first, then scrolls back up to Form 6.
-    const track = await this.findLink(/track application status|track application|application status/i);
-    if (track && !(await go('point_at', { target_area: 'page', target_id: track.id, hint: 'After you apply, track your application here' }))) return;
+    // Judges: tour the Form 6 card (guidelines, paper form). Register: show where to
+    // track the application later (point_at scrolls to it, then back up to Form 6).
+    if (this.variant === 'judges') {
+      if (!(await this.tourForm6Card(go, sources()))) return;
+    } else {
+      const track = await this.findLink(/track application status|track application|application status/i);
+      if (track && !(await go('point_at', { target_area: 'page', target_id: track.id, hint: 'After you apply, track your application here' }))) return;
+    }
 
     const hint = 'Click here to start Form 6';
     if (!(await go('point_at', { target_area: 'page', target_id: form6.id, hint, kind: 'fact', source_ids: sources() }))) return;
@@ -124,7 +151,7 @@ export class RegisterDemoPlanner implements Planner {
     const waited = await this.step('wait_for_user', { event: 'any', hint: 'click Fill Form 6', timeout_s: 60 }, 1200);
     if (!waited.go) return;
     if (waited.out.timed_out) {
-      await go('finish', { message: 'No rush. When you are ready, click the highlighted Form 6 link and ask me for the next step.', source_ids: sources() }, 0);
+      await go('finish', { message: 'No rush. When you are ready, click the highlighted Form 6 link and ask me for the next step.' + this.handover(), source_ids: sources() }, 0);
       return;
     }
 
@@ -139,8 +166,9 @@ export class RegisterDemoPlanner implements Planner {
     }
 
     if (ctx.signal.aborted) return;
+
     const closing =
-      'Next: sign in, open **Form 6**, fill in your details and upload your age and address proof. After you submit, note the reference number so you can track your application.';
+      'Next: sign in, open **Form 6**, fill in your details and upload your age and address proof. After you submit, note the reference number so you can track your application.' + this.handover();
     await go('finish', { message: closing, source_ids: sources() }, 0);
   }
 }

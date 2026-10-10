@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { AgentCore } from '../agent/core';
 import { ClinePlanner } from '../agent/clinePlanner';
 import { DemoPlanner } from '../agent/demoPlanner';
-import { REGISTER_DEMO_MESSAGE, RegisterDemoPlanner } from '../agent/registerDemoPlanner';
+import { JUDGES_DEMO_MESSAGE, REGISTER_DEMO_MESSAGE, RegisterDemoPlanner } from '../agent/registerDemoPlanner';
 import { FallbackPlanner } from '../agent/fallbackPlanner';
 import type { Planner, PlannerDeps } from '../agent/planner';
 import type { Host } from '../agent/types';
@@ -36,7 +36,10 @@ let agent: AgentCore | null = null;
  * Next run uses a scripted planner: "tour" = ghost showcase ("/demo", --demo),
  * "register" = real task, new voter registration ("/demo-register", --demo=register).
  */
-let demoRequested: 'tour' | 'register' | null = null;
+let demoRequested: 'tour' | 'register' | 'judges' | null = null;
+/** Judges run (`--demo=judges`): starts on Google, scripted first query, then live mode. */
+const JUDGES_START_URL = 'https://www.google.com/';
+const judgesRun = process.argv.includes('--demo=judges');
 // Contains "click" and "scroll" so the user-asked permissions apply to the demo.
 const DEMO_MESSAGE = 'Ghost demo: point, navigate, scroll, open a tab, click and switch back';
 
@@ -123,6 +126,7 @@ async function boot(): Promise<void> {
     demoRequested = null; // one-shot
     if (demo === 'tour') return new DemoPlanner(deps, tabs, logger);
     if (demo === 'register') return new RegisterDemoPlanner(deps, tabs, logger);
+    if (demo === 'judges') return new RegisterDemoPlanner(deps, tabs, logger, 'judges');
     return config.plannerImpl === 'fallback'
       ? new FallbackPlanner(
           { baseUrl: config.plannerUrl, modelId: config.plannerModel, apiKey: config.plannerApiKey, reasoningEffort: config.plannerReasoning || undefined },
@@ -154,7 +158,7 @@ async function boot(): Promise<void> {
   });
 
   void pollHealth(rag, sendChat);
-  await tabs.openTab(config.startUrl).catch((error) => logger.warn('tabs', 'start url failed', { error: String(error) }));
+  await tabs.openTab(judgesRun ? JUDGES_START_URL : config.startUrl).catch((error) => logger.warn('tabs', 'start url failed', { error: String(error) }));
 
   // Diagnostic hook: `--dump-labels` logs every clickable label on the start page.
   if (process.argv.includes('--dump-labels')) {
@@ -178,11 +182,18 @@ async function boot(): Promise<void> {
     setTimeout(() => void agent?.handleUserMessage(ask.slice(0, 500)), Number(process.env.DEMO_DELAY_MS ?? 9000));
   }
 
-  const demoArg = process.argv.includes('--demo') ? 'tour' : process.argv.includes('--demo=register') ? 'register' : null;
+  const demoArg = process.argv.includes('--demo')
+    ? 'tour'
+    : process.argv.includes('--demo=register')
+      ? 'register'
+      : judgesRun
+        ? 'judges'
+        : null;
   if (demoArg) {
+    const message = { tour: DEMO_MESSAGE, register: REGISTER_DEMO_MESSAGE, judges: JUDGES_DEMO_MESSAGE }[demoArg];
     setTimeout(() => {
       demoRequested = demoArg;
-      void agent?.handleUserMessage(demoArg === 'register' ? REGISTER_DEMO_MESSAGE : DEMO_MESSAGE);
+      void agent?.handleUserMessage(message);
     }, Number(process.env.DEMO_DELAY_MS ?? 9000));
   }
 
@@ -224,6 +235,9 @@ function wireIpc({ chatView, chatWindow, toolbarView, tabs, layout, logger, send
       } else if (slash === '/demo-register') {
         demoRequested = 'register';
         text = REGISTER_DEMO_MESSAGE;
+      } else if (slash === '/demo-judges') {
+        demoRequested = 'judges';
+        text = JUDGES_DEMO_MESSAGE;
       }
       tabs.focusPage(); // focus returns to the page after send (spec 7.1)
       void agent?.handleUserMessage(text).catch((error) => logger.error('agent', 'message failed', { error: String(error) }));

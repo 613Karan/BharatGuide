@@ -1,0 +1,23 @@
+# Local Qdrant instance for the ARGO RAG pipeline.
+#
+#   docker compose -f infra/docker-compose.yml up -d      # start
+#   docker compose -f infra/docker-compose.yml logs -f    # follow logs
+#   docker compose -f infra/docker-compose.yml down       # stop (data survives)
+#
+# Storage is bind-mounted to ./qdrant_storage, so the index survives restarts
+# and can be copied/backed up with the container stopped.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: argo-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # REST API + web dashboard (http://localhost:6333/dashboard)
+      - "6334:6334"   # gRPC (faster bulk upserts)
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    environment:
+      # Keep the local instance quiet and predictable.
+      QDRANT__LOG_LEVEL: INFO
+      QDRANT__SERVICE__ENABLE_TLS: "false"

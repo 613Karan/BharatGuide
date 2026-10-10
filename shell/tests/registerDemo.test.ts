@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AgentCore } from '../src/agent/core';
 import { createFastModel, toOpenAiMessages } from '../src/agent/fastModel';
-import { REGISTER_ANSWER, REGISTER_DEMO_MESSAGE, RegisterDemoPlanner } from '../src/agent/registerDemoPlanner';
+import { JUDGES_DEMO_MESSAGE, REGISTER_ANSWER, REGISTER_DEMO_MESSAGE, RegisterDemoPlanner } from '../src/agent/registerDemoPlanner';
 import { assistantText, okResponse } from './fakes';
 import { portal } from './voterPortal';
 
@@ -31,6 +31,25 @@ describe('register-as-new-voter demo', () => {
     expect(ghost.log.some((h) => /^hint:.*Form 6/.test(h))).toBe(true);
     expect(ghost.log.some((h) => /^hint:.*yourself/i.test(h))).toBe(true); // EPIC field: user does it
     expect(agent.state).toBe('Idle');
+  }, 20_000);
+
+  it('judges variant: same guarded flow, then hands control back to the user (live planner next)', async () => {
+    const { host, browser, events } = portal();
+    host.rag = { search: async () => okResponse(REAL_FORM6) };
+    let calls = 0;
+    const agent = new AgentCore(host, (deps) => (calls++, new RegisterDemoPlanner(deps, browser, host.logger, 'judges')));
+    vi.useFakeTimers({ shouldAdvanceTime: true, advanceTimeDelta: 200 });
+    await agent.handleUserMessage(JUDGES_DEMO_MESSAGE);
+    vi.useRealTimers();
+
+    const text = assistantText(events);
+    expect(text).toContain('Form 6');
+    expect(text).toMatch(/you are in control/i);
+    expect(browser.actions).toContain('navigate:https://voters.eci.gov.in/');
+    expect(browser.actions.some((a) => a.startsWith('click'))).toBe(false);
+    expect(browser.typed).toEqual([]);
+    expect(agent.state).toBe('Idle');
+    expect(calls).toBe(1);
   }, 20_000);
 
   it('the scripted answer passes the fact guard against the real chunk text', async () => {
