@@ -31,6 +31,8 @@ export interface BrowserPort {
   animateUrl(url: string, ms: number): void;
   click(pageX: number, pageY: number): Promise<void>;
   wheel(pageX: number, pageY: number, deltaY: number): Promise<void>;
+  /** Smoothly bring an element to the middle of the viewport. Reveals only: never clicks. */
+  scrollIntoView(elementId: string): Promise<boolean>;
   focusSearch(elementId: string): Promise<boolean>;
   insertText(text: string): Promise<void>;
   searchValue(elementId: string): Promise<string | null>;

@@ -245,8 +245,29 @@ export class TabManager implements BrowserPort {
   click(pageX: number, pageY: number): Promise<void> {
     return this.bridge().click(pageX, pageY);
   }
-  wheel(pageX: number, pageY: number, deltaY: number): Promise<void> {
-    return this.bridge().wheel(pageX, pageY, deltaY);
+  /**
+   * Scroll by deltaY: real wheel input first; if the page did not move (wheel
+   * landed on a non-scrollable spot, or the page scrolls an inner container),
+   * fall back to scrolling the document/container directly.
+   */
+  async wheel(pageX: number, pageY: number, deltaY: number): Promise<void> {
+    const bridge = this.bridge();
+    const before = await bridge.scrollY().catch(() => null);
+    await bridge.wheel(pageX, pageY, deltaY);
+    await new Promise((r) => setTimeout(r, 250));
+    const after = await bridge.scrollY().catch(() => null);
+    if (before !== null && after !== null && Math.abs(after - before) < 5) {
+      this.logger.info('tabs', 'wheel did not scroll; using scrollBy fallback', { before, deltaY });
+      await bridge.scrollBy(deltaY).catch(() => undefined);
+    }
+  }
+  async scrollIntoView(elementId: string): Promise<boolean> {
+    if (!this.active) return false;
+    try {
+      return await this.active.bridge.scrollIntoView(elementId);
+    } catch {
+      return false;
+    }
   }
   focusSearch(elementId: string): Promise<boolean> {
     return this.bridge().focusSearch(elementId);

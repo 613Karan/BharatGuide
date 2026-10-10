@@ -5,7 +5,16 @@
  */
 import type { WebContents } from 'electron';
 import type { PageEvent, PageSnapshot, Rect } from '../shared/page';
-import { BINDING_NAME, ISOLATED_WORLD, elementInfoScript, focusSearchScript, searchValueScript } from './pageHelpers';
+import {
+  BINDING_NAME,
+  ISOLATED_WORLD,
+  SCROLL_Y_SCRIPT,
+  elementInfoScript,
+  focusSearchScript,
+  scrollByScript,
+  scrollIntoViewScript,
+  searchValueScript,
+} from './pageHelpers';
 import { LISTENER_SCRIPT } from './pageListener';
 import { SNAPSHOT_SCRIPT } from './snapshotScript';
 
@@ -109,6 +118,18 @@ export class CdpBridge {
       deltaX: 0,
       deltaY: Math.round(deltaY),
     });
+  }
+
+  async scrollIntoView(elementId: string): Promise<boolean> {
+    return this.readEval<boolean>(scrollIntoViewScript(elementId));
+  }
+
+  async scrollY(): Promise<number> {
+    return this.readEval<number>(SCROLL_Y_SCRIPT);
+  }
+
+  async scrollBy(deltaY: number): Promise<void> {
+    await this.readEval(scrollByScript(deltaY));
   }
 
   async focusSearch(elementId: string): Promise<boolean> {

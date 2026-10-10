@@ -48,6 +48,17 @@ export class RegisterDemoPlanner implements Planner {
     );
   }
 
+  /** Poll until the page has rendered a matching link (slow government portals). */
+  private async waitForLink(pattern: RegExp, timeoutMs = 12_000): Promise<SnapElement | null> {
+    const until = Date.now() + timeoutMs;
+    while (!this.cancelled && Date.now() < until) {
+      const found = await this.findLink(pattern);
+      if (found) return found;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    return null;
+  }
+
   /** A field the user must fill in themselves (login: mobile / OTP / captcha). */
   private async findPersonalField(): Promise<SnapElement | null> {
     const els = await this.elements();
@@ -96,11 +107,16 @@ export class RegisterDemoPlanner implements Planner {
 
     // 3. Open the official portal and show the right entry point.
     if (!(await go('navigate', { url: PORTAL }, 2500))) return;
-    const form6 = await this.findLink(/fill form 6\b|new voter registration|form 6\b/i);
+    const form6 = await this.waitForLink(/fill form 6\b|new voter registration|form 6\b/i);
     if (!form6) {
       await go('finish', { message: 'The portal is open. Look for the Form 6 (new voter registration) option on the home page.', source_ids: sources() }, 0);
       return;
     }
+    // Show where to track the application later. It sits lower on the page, so
+    // point_at scrolls it into view first, then scrolls back up to Form 6.
+    const track = await this.findLink(/track application status|track application|application status/i);
+    if (track && !(await go('point_at', { target_area: 'page', target_id: track.id, hint: 'After you apply, track your application here' }))) return;
+
     const hint = 'Click here to start Form 6';
     if (!(await go('point_at', { target_area: 'page', target_id: form6.id, hint, kind: 'fact', source_ids: sources() }))) return;
 

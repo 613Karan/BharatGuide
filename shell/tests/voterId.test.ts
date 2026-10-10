@@ -55,13 +55,24 @@ describe('click on voter ID: tool guards', () => {
     expect(browser.actions).toEqual([]);
   });
 
-  it('an off-screen voter ID link gets a "Scroll down" hint and is not clicked', async () => {
+  it('an off-screen voter ID link is scrolled into view, then pointed at (never clicked)', async () => {
     const { host, ghost, browser } = portal();
+    const ctx = makeCtx('Guiding');
+    const out = await runTool('point_at', { target_area: 'page', target_id: 'e14', hint: 'Voter ID services' }, ctx, host, halt);
+    expect(out).toMatchObject({ ok: true, pointed: 'e14', scrolled: 'down' });
+    expect(ghost.log).toContain('hint:Scrolling down');
+    expect(ghost.log).toContain('hint:Voter ID services'); // ghost lands on the element after the scroll
+    expect(browser.actions).toEqual(['scroll_into_view:e14']); // no click, no typing
+  });
+
+  it('if the page will not scroll, the user is asked to scroll and nothing is clicked', async () => {
+    const { host, ghost, browser } = portal();
+    browser.canScroll = false;
     const ctx = makeCtx('Guiding', { userAskedClick: true });
     expect((await runTool('point_at', { target_area: 'page', target_id: 'e14', hint: 'Voter ID services' }, ctx, host, halt)).offscreen).toBe(true);
     expect(ghost.log).toContain('hint:Scroll down');
     expect((await runTool('click', { element_id: 'e14' }, ctx, host, halt)).error).toMatch(/off screen/);
-    expect(browser.actions).toEqual([]);
+    expect(browser.actions.some((a) => a.startsWith('click'))).toBe(false);
   });
 
   it('typing a voter ID number is refused', async () => {

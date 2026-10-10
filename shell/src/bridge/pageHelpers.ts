@@ -71,6 +71,39 @@ export function elementInfoScript(elementId: string): string {
   })()`;
 }
 
+/**
+ * Smoothly scroll one element to the middle of the viewport (works for nested
+ * scroll containers too). Scrolling only reveals content: no click, no input.
+ */
+export function scrollIntoViewScript(elementId: string): string {
+  return `(() => {
+    ${SHARED_HELPERS}
+    const el = byGgId(${JSON.stringify(elementId)});
+    if (!el) return false;
+    el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    return true;
+  })()`;
+}
+
+/** Scroll the page (or its main scroll container) by dy CSS px; returns the new scroll position. */
+export function scrollByScript(dy: number): string {
+  return `(() => {
+    const dy = ${Number(dy) || 0};
+    const root = document.scrollingElement || document.documentElement;
+    const before = root.scrollTop;
+    root.scrollBy({ top: dy, behavior: 'smooth' });
+    // Pages that scroll an inner container instead of the document.
+    if (root.scrollHeight <= root.clientHeight + 2) {
+      const box = Array.from(document.querySelectorAll('main, [role=main], div'))
+        .find((n) => n.scrollHeight > n.clientHeight + 40 && /(auto|scroll)/.test(getComputedStyle(n).overflowY));
+      if (box) { box.scrollBy({ top: dy, behavior: 'smooth' }); return { before, container: true }; }
+    }
+    return { before, container: false };
+  })()`;
+}
+
+export const SCROLL_Y_SCRIPT = `(() => (document.scrollingElement || document.documentElement).scrollTop)()`;
+
 /** Focus the granted search field and clear it so insertText types exactly the title. */
 export function focusSearchScript(elementId: string): string {
   return `(() => {

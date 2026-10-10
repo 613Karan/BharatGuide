@@ -54,6 +54,18 @@ export class FakeBrowser implements BrowserPort {
   animateUrl(url: string) { this.actions.push(`animate:${url}`); }
   async click(x: number, y: number) { this.actions.push(`click:${x},${y}`); }
   async wheel(_x: number, _y: number, dy: number) { this.actions.push(`wheel:${dy}`); }
+  /** false = simulate a page that refuses to scroll (element stays off screen). */
+  canScroll = true;
+  async scrollIntoView(id: string) {
+    this.actions.push(`scroll_into_view:${id}`);
+    const snap = this.snap;
+    const e = snap?.elements.find((x) => x.id === id);
+    if (!snap || !e || !this.canScroll) return Boolean(e);
+    // Replace with a copy: element fixtures are shared module constants across tests.
+    const moved = { ...e, rect: { ...e.rect, y: 300 }, inViewport: true };
+    this.snap = { ...snap, elements: snap.elements.map((x) => (x.id === id ? moved : x)) };
+    return true;
+  }
   async focusSearch() { return true; }
   async insertText(text: string) { this.typed.push(text); }
   async searchValue() { return this.typed.at(-1) ?? ''; }
