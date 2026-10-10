@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <title>Toolbar</title>
+    <link rel="stylesheet" href="./toolbar.css" />
+  </head>
+  <body>
+    <div id="tabs" class="tabs"></div>
+    <div class="bar">
+      <button id="back" data-ghost-id="back" title="Back">&#8592;</button>
+      <button id="forward" data-ghost-id="forward" title="Forward">&#8594;</button>
+      <button id="reload" data-ghost-id="reload" title="Reload">&#8635;</button>
+      <form id="addr-form" class="addr-form">
+        <input id="address" data-ghost-id="address_bar" spellcheck="false" autocomplete="off" placeholder="Search or enter address" />
+      </form>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <title>Ghost</title>
+    <link rel="stylesheet" href="./ghost.css" />
+  </head>
+  <body>
+    <!-- Transparent, click-through, never focused: draws only. -->
+    <canvas id="trail"></canvas>
+    <div id="ring" class="ring hidden"></div>
+    <div id="cursor" class="cursor hidden" aria-hidden="true">
+      <svg viewBox="0 0 36 36" width="38" height="38">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#8b6cff" />
+            <stop offset="1" stop-color="#22d3ee" />
+          </linearGradient>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2.2" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        <!-- Clean rounded arrow: clearly not the system cursor. -->
+        <path
+          d="M7 4.5c0-1 1.1-1.6 1.9-1L29 18.2c.9.6.5 2-.6 2.1l-8.4.9-4.6 7.6c-.6.9-2 .7-2.3-.4L7 5.6z"
+          fill="url(#g)"
+          stroke="rgba(255,255,255,0.95)"
+          stroke-width="1.4"
+          stroke-linejoin="round"
+          filter="url(#glow)"
+        />
+      </svg>
+      <span id="badge" class="badge">Guide</span>
+    </div>
+    <div id="ripples"></div>
+    <div id="hint" class="hint hidden"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

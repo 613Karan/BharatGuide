@@ -1,0 +1,65 @@
+# Citation metadata for documents whose Qdrant payload lacks it (spec rule 10/11).
+# Keyed by payload doc_id. Payload values always win over these.
+# Verify source_url / publication_date against the official pages before a demo.
+# `exclude: true` drops a doc from results (unknown provenance = excluded, rule 11).
+
+form_6_en:
+  org: ECI
+  title: Guidelines for filling up the application Form-6
+  source_url: https://voters.eci.gov.in/guidelines/Form-6_en.pdf
+  publication_date: "2022-07-20"
+form_6_english:
+  org: ECI
+  title: Form-6 Application Form for New Voters
+  source_url: https://voters.eci.gov.in/formspdf/Form_6_English.pdf
+  publication_date: "2022-07-20"
+form_6a_en:
+  org: ECI
+  title: Guidelines for filling up Form-6A (overseas electors)
+  source_url: https://voters.eci.gov.in/guidelines/Form-6a_en.pdf
+  publication_date: "2022-07-20"
+form_6a_english:
+  org: ECI
+  title: Form-6A Application Form for Overseas Electors
+  source_url: https://voters.eci.gov.in/formspdf/Form_6A_English.pdf
+  publication_date: "2022-07-20"
+form_7_en:
+  org: ECI
+  title: Guidelines for filling up the application Form-7
+  source_url: https://voters.eci.gov.in/guidelines/Form-7_en.pdf
+  publication_date: "2022-07-20"
+form_7_english:
+  org: ECI
+  title: Form-7 Objection / Deletion of Name
+  source_url: https://voters.eci.gov.in/formspdf/Form_7_English.pdf
+  publication_date: "2022-07-20"
+form_8_en:
+  org: ECI
+  title: Guidelines for filling up the application Form-8
+  source_url: https://voters.eci.gov.in/guidelines/Form-8_en.pdf
+  publication_date: "2022-07-20"
+form_8_english:
+  org: ECI
+  title: Form-8 Shifting / Correction of Entries
+  source_url: https://voters.eci.gov.in/formspdf/Form_8_English.pdf
+  publication_date: "2022-07-20"
+declaration_form_english:
+  org: ECI
+  title: Declaration Form (with Form-6)
+  source_url: https://voters.eci.gov.in/
+  publication_date: "2025-01-01"
+voterguide2025eng:
+  org: ECI
+  title: Voter Guide 2025
+  source_url: https://www.eci.gov.in/
+  publication_date: "2025-01-01"
+registration_of_electors_rules:
+  org: ECI
+  title: The Registration of Electors Rules, 1960
+  source_url: https://www.eci.gov.in/
+  publication_date: "1960-01-01"
+representation_of_the_people_act_1950:
+  org: ECI
+  title: The Representation of the People Act, 1950
+  source_url: https://www.eci.gov.in/
+  publication_date: "1950-01-01"

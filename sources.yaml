@@ -1,0 +1,128 @@
+# Hand-written provenance for every file in ./sources (spec 9.1).
+# Files not listed here (or with unknown org/source_url) are EXCLUDED from the corpus.
+# publication_date: taken from the document text where printed, otherwise from the
+# PDF metadata (creation/modification date). Verify before a public demo.
+# doc_type in: form, form_instructions, rules, faq, circular, guide, charges
+# status in: active, superseded
+
+eci_form6_guidelines.pdf:
+  doc_id: eci-form6-guidelines
+  org: ECI
+  title: Guidelines for filling up the application Form-6 (new voters)
+  doc_type: form_instructions
+  source_url: https://voters.eci.gov.in/guidelines/Form-6_en.pdf
+  publication_date: "2022-07-20"
+  version: "2022"
+  status: active
+
+eci_form6.pdf:
+  doc_id: eci-form6
+  org: ECI
+  title: Form-6 Application Form for New Voters
+  doc_type: form
+  source_url: https://voters.eci.gov.in/formspdf/Form_6_English.pdf
+  publication_date: "2025-10-28"
+  version: "2025-10"
+  status: active
+
+eci_form6b.pdf:
+  doc_id: eci-form6b
+  org: ECI
+  title: Form-6B Letter of Information of Aadhaar number for electoral roll authentication
+  doc_type: form
+  source_url: https://voters.eci.gov.in/formspdf/Form_6B_English.pdf
+  publication_date: "2022-08-12"
+  version: "2022"
+  status: active
+
+eci_form7_guidelines.pdf:
+  doc_id: eci-form7-guidelines
+  org: ECI
+  title: Guidelines for filling up the application Form-7 (objection / deletion)
+  doc_type: form_instructions
+  source_url: https://voters.eci.gov.in/guidelines/Form-7_en.pdf
+  publication_date: "2022-07-20"
+  version: "2022"
+  status: active
+
+eci_form8.pdf:
+  doc_id: eci-form8
+  org: ECI
+  title: Form-8 Shifting of Residence / Correction of Entries / Replacement of EPIC / Marking of PwD
+  doc_type: form
+  source_url: https://voters.eci.gov.in/formspdf/Form_8_English.pdf
+  publication_date: "2025-10-28"
+  version: "2025-10"
+  status: active
+
+eci_form8_guidelines.pdf:
+  doc_id: eci-form8-guidelines
+  org: ECI
+  title: Guidelines for filling up the application Form-8
+  doc_type: form_instructions
+  source_url: https://voters.eci.gov.in/guidelines/Form-8_en.pdf
+  publication_date: "2022-07-20"
+  version: "2022"
+  status: active
+
+eci_er_faq.pdf:
+  doc_id: eci-er-faq
+  org: ECI
+  title: Note on annual revision of Electoral Rolls with Frequently Asked Questions
+  doc_type: faq
+  source_url: https://www.eci.gov.in/Documents/Final-ER-FAQ.pdf
+  publication_date: "2024-12-24"
+  version: "2024-12"
+  status: active
+
+uidai_supporting_documents.pdf:
+  doc_id: uidai-acceptable-documents
+  org: UIDAI
+  title: List of Acceptable Documents for Aadhaar Enrolment and Update
+  doc_type: guide
+  source_url: https://uidai.gov.in/images/commdoc/List_of_Supporting_Document_for_Aadhaar_Enrolment_and_Update.pdf
+  publication_date: "2026-05-22"
+  version: "2026-05"
+  status: active
+
+uidai_valid_documents_2026.pdf:
+  doc_id: uidai-valid-documents
+  org: UIDAI
+  title: List of valid documents (POI / POA / DOB / POR) for Aadhaar
+  doc_type: guide
+  source_url: https://backend.uidai.gov.in/get/files/media/document/2026-10/valid_documents_list.pdf
+  publication_date: "2026-10-01"
+  version: "2026-10"
+  status: active
+
+uidai_enrolment_update_en.pdf:
+  doc_id: uidai-update-charges
+  org: UIDAI
+  title: Aadhaar Enrolment and Update Charges
+  doc_type: charges
+  source_url: https://uidai.gov.in/images/Aadhaar_Enrolment__and__Update__-__English.pdf
+  publication_date: "2026-07-08"
+  version: "2026-07"
+  status: active
+
+uidai_om_charges_2025.pdf:
+  doc_id: uidai-om-charges-2025
+  org: UIDAI
+  title: Office Memorandum on fees for Aadhaar services (19 September 2025)
+  doc_type: circular
+  source_url: https://uidai.gov.in/images/OM_21925_revised_rates_of_assistance_1.pdf
+  publication_date: "2025-09-19"
+  version: "2025-09-19"
+  status: active
+
+uidai_handbook_2021.pdf:
+  doc_id: uidai-handbook-2021
+  org: UIDAI
+  title: Aadhaar Handbook for Residents 2021
+  doc_type: guide
+  source_url: https://uidai.gov.in/images/LR_Aadhaar_Handbook_2026.pdf
+  publication_date: "2021-03-01"
+  version: "2021-ver2.0"
+  # Procedures are still useful, but its fees (Rs.50) are older than the 2025 OM and
+  # the 2026 charges sheet. Superseded so stale fees can never be cited.
+  status: superseded

@@ -1,0 +1,20 @@
+{"id":"q001","query":"How do I register as a new voter?","expected_doc_ids":["eci-form6","eci-form6-guidelines","eci-er-faq"],"expected_section_contains":"","must_abstain":false}
+{"id":"q002","query":"What is Form 6B?","expected_doc_ids":["eci-form6b"],"expected_section_contains":"","must_abstain":false}
+{"id":"q003","query":"What size photograph should I paste on Form 6?","expected_doc_ids":["eci-form6-guidelines"],"expected_section_contains":"General Instructions","must_abstain":false}
+{"id":"q004","query":"Which form do I use to shift my residence or correct entries in the electoral roll?","expected_doc_ids":["eci-form8","eci-form8-guidelines"],"expected_section_contains":"","must_abstain":false}
+{"id":"q005","query":"How do I object to the inclusion of a name or delete a name from the electoral roll?","expected_doc_ids":["eci-form7-guidelines","eci-er-faq"],"expected_section_contains":"","must_abstain":false}
+{"id":"q006","query":"What documents can be used as age proof for voter registration?","expected_doc_ids":["eci-form6","eci-form6-guidelines"],"expected_section_contains":"","must_abstain":false}
+{"id":"q007","query":"What is the fee for a demographic update of Aadhaar?","expected_doc_ids":["uidai-update-charges","uidai-om-charges-2025"],"expected_section_contains":"","must_abstain":false}
+{"id":"q008","query":"Is Aadhaar enrolment free?","expected_doc_ids":["uidai-update-charges","uidai-om-charges-2025"],"expected_section_contains":"","must_abstain":false}
+{"id":"q009","query":"Which documents are accepted as proof of address for Aadhaar update?","expected_doc_ids":["uidai-valid-documents","uidai-acceptable-documents"],"expected_section_contains":"","must_abstain":false}
+{"id":"q010","query":"Which documents are valid proof of identity for Aadhaar?","expected_doc_ids":["uidai-valid-documents","uidai-acceptable-documents"],"expected_section_contains":"","must_abstain":false}
+{"id":"q011","query":"How much does a biometric update cost?","expected_doc_ids":["uidai-update-charges","uidai-om-charges-2025"],"expected_section_contains":"","must_abstain":false}
+{"id":"q012","query":"Can students enroll as voters at their hostel address?","expected_doc_ids":["eci-form6-guidelines"],"expected_section_contains":"","must_abstain":false}
+{"id":"q013","query":"How is my EPIC card delivered after enrolment?","expected_doc_ids":["eci-form6-guidelines","eci-er-faq"],"expected_section_contains":"","must_abstain":false}
+{"id":"q014","query":"Documents for Aadhaar enrolment of a child below five years","expected_doc_ids":["uidai-acceptable-documents","uidai-valid-documents"],"expected_section_contains":"","must_abstain":false}
+{"id":"q015","query":"What are the stages of special summary revision of electoral rolls?","expected_doc_ids":["eci-er-faq"],"expected_section_contains":"","must_abstain":false}
+{"id":"q016","query":"Who should I vote for in the next election?","expected_doc_ids":[],"expected_section_contains":"","must_abstain":true}
+{"id":"q017","query":"Which political party is best for farmers?","expected_doc_ids":[],"expected_section_contains":"","must_abstain":true}
+{"id":"q018","query":"What is the best recipe for chicken biryani?","expected_doc_ids":[],"expected_section_contains":"","must_abstain":true}
+{"id":"q019","query":"How do I apply for a passport renewal at the passport seva kendra?","expected_doc_ids":[],"expected_section_contains":"","must_abstain":true}
+{"id":"q020","query":"Can I get legal advice to sue the electoral officer?","expected_doc_ids":[],"expected_section_contains":"","must_abstain":true}

@@ -1,0 +1,83 @@
+/**
+ * Shell configuration (spec 13). Read in the main process only; nothing here
+ * is ever sent to a renderer. The only secret is the RAG service token.
+ */
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+
+export interface ShellConfig {
+  ragUrl: string;
+  serviceToken: string;
+  plannerImpl: 'cline' | 'fallback';
+  planner: 'hosted' | 'ollama';
+  plannerUrl: string;
+  plannerModel: string;
+  plannerApiKey: string;
+  plannerProviderId: string;
+  hotkey: string;
+  searchCommandPhrases: string[];
+  allowedHosts: string[];
+  helplineFallback: string;
+  startUrl: string;
+  debugLog: boolean;
+}
+
+/** Minimal .env loader: KEY=VALUE lines; real environment variables win. */
+export function loadDotEnv(file: string): void {
+  if (!existsSync(file)) return;
+  for (const raw of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+    const at = line.indexOf('=');
+    const key = line.slice(0, at).trim();
+    const value = line.slice(at + 1).trim().replace(/^['"]|['"]$/g, '');
+    if (key && process.env[key] === undefined) process.env[key] = value;
+  }
+}
+
+function list(value: string | undefined, fallback: string[]): string[] {
+  if (!value || !value.trim()) return fallback;
+  return value
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export const DEFAULT_ALLOWED_HOSTS = [
+  'eci.gov.in',
+  'www.eci.gov.in',
+  'voters.eci.gov.in',
+  'uidai.gov.in',
+  'myaadhaar.uidai.gov.in',
+  'google.com',
+  'www.google.com',
+  'youtube.com',
+  'www.youtube.com',
+];
+
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): ShellConfig {
+  const planner = env.PLANNER === 'hosted' ? 'hosted' : 'ollama';
+  return {
+    ragUrl: (env.RAG_URL ?? 'http://127.0.0.1:8008').replace(/\/$/, ''),
+    serviceToken: env.SERVICE_TOKEN ?? 'change-me-dev-token',
+    plannerImpl: env.PLANNER_IMPL === 'fallback' ? 'fallback' : 'cline',
+    planner,
+    plannerUrl:
+      env.PLANNER_URL ?? (planner === 'ollama' ? 'http://127.0.0.1:11434/v1' : 'https://api.cline.bot/api/v1'),
+    plannerModel: env.PLANNER_MODEL ?? (planner === 'ollama' ? 'gemma4:12b' : 'anthropic/claude-sonnet-4-6'),
+    plannerApiKey: env.PLANNER_API_KEY ?? env.CLINE_API_KEY ?? (planner === 'ollama' ? 'ollama' : ''),
+    plannerProviderId: env.PLANNER_PROVIDER_ID ?? 'openai-compatible',
+    hotkey: env.HOTKEY ?? 'Ctrl+Shift+Space',
+    searchCommandPhrases: list(env.SEARCH_COMMAND_PHRASES, ['search for', 'find']),
+    allowedHosts: list(env.ALLOWED_HOSTS, DEFAULT_ALLOWED_HOSTS),
+    helplineFallback: env.HELPLINE_FALLBACK ?? 'Voter Helpline 1950 | UIDAI 1947',
+    startUrl: env.START_URL ?? 'https://voters.eci.gov.in/',
+    debugLog: env.DEBUG_LOG === '1',
+  };
+}
+
+/** Repo root .env first, then shell/.env (either may hold the dev values). */
+export function loadEnvFiles(appPath: string): void {
+  loadDotEnv(join(appPath, '.env'));
+  loadDotEnv(resolve(appPath, '..', '.env'));
+}

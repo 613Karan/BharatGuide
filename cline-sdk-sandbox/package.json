@@ -1,0 +1,20 @@
+{
+  "name": "cline-sdk-sandbox",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated harness for testing Cline SDK tool calling. Deliberately NOT part of the Electron/CommonJS build (tsconfig only includes src/**/*.ts).",
+  "scripts": {
+    "test": "node --test tools.test.ts",
+    "test:provider": "node --test fake-provider.test.ts",
+    "test:cline-config": "node --test cline-config.test.ts",
+    "test:offline": "node --test tools.test.ts cline-config.test.ts fake-provider.test.ts",
+    "test:live": "node --test agent.live.test.ts",
+    "test:all": "node --test tools.test.ts cline-config.test.ts fake-provider.test.ts agent.live.test.ts",
+    "events": "node dump-events.ts"
+  },
+  "dependencies": {
+    "@cline/sdk": "^0.0.92",
+    "zod": "^4.3.6"
+  }
+}
