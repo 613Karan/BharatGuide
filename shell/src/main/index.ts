@@ -3,7 +3,7 @@
  * chat views) -> ghost overlay window -> tab manager -> RAG client -> agent.
  * Renderers hold no secrets (rule 12); the service token stays here.
  */
-import { Menu, app, globalShortcut, ipcMain, session, webContents } from 'electron';
+import { Menu, app, globalShortcut, ipcMain, session, webContents, type BaseWindow } from 'electron';
 import { join } from 'node:path';
 import { AgentCore } from '../agent/core';
 import { ClinePlanner, warmUpSdk } from '../agent/clinePlanner';
@@ -32,6 +32,8 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 loadEnvFiles(app.getAppPath());
 const config = loadConfig();
 let agent: AgentCore | null = null;
+/** Main window, for the single-instance "bring to front". */
+let mainWindowRef: BaseWindow | null = null;
 /**
  * Next run uses a scripted planner: "tour" = ghost showcase ("/demo", --demo),
  * "register" = real task, new voter registration ("/demo-register", --demo=register).
@@ -67,6 +69,7 @@ async function boot(): Promise<void> {
 
   Menu.setApplicationMenu(null);
   const win = createMainWindow();
+  mainWindowRef = win;
   const toolbarView = createLocalView('toolbar');
   win.contentView.addChildView(toolbarView);
   const chatWindow = new ChatWindow(win);
@@ -352,10 +355,26 @@ async function pollHealth(rag: RagClient, sendChat: (event: ChatEvent) => void):
   }
 }
 
-app.whenReady().then(boot).catch((error) => {
-  console.error('startup failed', error);
+// One Guide at a time: a second launch (e.g. double-clicking the desktop
+// shortcut again) brings the existing window to the front instead.
+if (!app.requestSingleInstanceLock()) {
   app.quit();
-});
+} else {
+  app.on('second-instance', () => {
+    const win = mainWindowRef;
+    if (!win || win.isDestroyed()) return;
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  });
+  app
+    .whenReady()
+    .then(boot)
+    .catch((error) => {
+      console.error('startup failed', error);
+      app.quit();
+    });
+}
 
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => globalShortcut.unregisterAll());
