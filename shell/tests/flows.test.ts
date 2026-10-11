@@ -1,6 +1,7 @@
 /** Spec §10/§11 flows through AgentCore with a scripted planner: D, abstain, service down, B. */
 import { describe, expect, it } from 'vitest';
 import { AgentCore } from '../src/agent/core';
+import type { PlannerDeps } from '../src/agent/planner';
 import { RagUnavailableError } from '../src/rag/client';
 import { assistantText, makeHost } from './fakes';
 import { scripted } from './scripted';
@@ -27,6 +28,31 @@ describe('agent flows', () => {
     );
     expect(statuses.at(-1)).toBeNull();
     expect(agent.state).toBe('Idle');
+  });
+
+  it('model fails AFTER a cited answer (real log: "Model returned empty response"): no "cannot reach" card', async () => {
+    const { host, events } = makeHost();
+    const factory = (deps: PlannerDeps) => ({
+      name: 'flaky',
+      async run() {
+        await deps.exec('search_docs', { query: 'minimum age to register as voter', org: 'ECI' });
+        await deps.exec('reply', { text: 'You must be 18 years or above.', kind: 'fact', source_ids: ['S1'] });
+        throw new Error('Model returned empty response');
+      },
+      cancel() {},
+    });
+    const agent = new AgentCore(host, factory);
+    await agent.handleUserMessage('what should be my age to become a voter');
+    expect(assistantText(events)).toContain('18 years or above');
+    expect(events.some((e) => e.t === 'card' && (e as { kind: string }).kind === 'service_down')).toBe(false);
+    expect(agent.state).toBe('Idle');
+  });
+
+  it('model fails BEFORE showing anything: the service-down card is still shown', async () => {
+    const { host, events } = makeHost();
+    const agent = new AgentCore(host, () => ({ name: 'down', async run() { throw new Error('fetch failed'); }, cancel() {} }));
+    await agent.handleUserMessage('what should be my age to become a voter');
+    expect(events.some((e) => e.t === 'card' && (e as { kind: string }).kind === 'service_down')).toBe(true);
   });
 
   it('abstain: shell card with config helpline, model text never shown, ghost idle', async () => {

@@ -15,7 +15,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: { index: resolve(__dirname, 'src/main/index.ts') },
-        external: ['@cline/sdk'],
+        external: ['electron', '@cline/sdk'],
       },
     },
   },

@@ -102,6 +102,8 @@ export interface TaskContext {
   machine: StateMachine;
   grants: GrantStore;
   ghostAt: Point | null;
+  /** True once the user has seen a real answer or pointer (reply / point_at succeeded). */
+  shownToUser?: boolean;
 }
 
 export type ToolOutput = Record<string, unknown> & { error?: string; stop?: boolean };

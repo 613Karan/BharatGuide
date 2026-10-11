@@ -151,7 +151,11 @@ export class AgentCore {
       await planner.run(message, ctx);
       this.history.push(`user asked: ${message.slice(0, 160)}`);
     } catch (error) {
-      if (!ctx.signal.aborted && !ctx.stopped) {
+      if (!ctx.signal.aborted && !ctx.stopped && ctx.shownToUser) {
+        // The user already has their answer / pointer; the model just failed to
+        // call finish (e.g. "Model returned empty response"). Not an outage.
+        this.host.logger.warn('planner', 'run ended without finish after answering', { error: String(error) });
+      } else if (!ctx.signal.aborted && !ctx.stopped) {
         this.host.logger.error('planner', 'run failed', { error: String(error) });
         this.host.chat.emit({
           t: 'card',
@@ -186,7 +190,13 @@ export class AgentCore {
       // "submit appeal"). Say so honestly, point at the closest one, list the rest.
       const closest = await this.host.browser.findByText(similar[0]).catch(() => null);
       if (closest) {
-        const out = await runTool('point_at', { target_area: 'page', target_id: closest.id, hint: `Closest match: ${clip(similar[0])}` }, ctx, this.host, halt);
+        const out = await runTool(
+          'point_at',
+          { target_area: 'page', target_id: closest.id, target_text: clip(closest.name), hint: `Closest match: ${clip(similar[0])}` },
+          ctx,
+          this.host,
+          halt,
+        );
         if (out.stop) return true;
       }
       const list = similar.map((s) => `- ${clip(s)}`).join('\n');
@@ -201,7 +211,9 @@ export class AgentCore {
     }
 
     const label = clip(hit.name);
-    const out = await runTool('point_at', { target_area: 'page', target_id: hit.id, hint: `Here: ${label}` }, ctx, this.host, halt);
+    // target_text = the label found on the page, so the hint's fact check knows
+    // "Fill Form 6" is a visible label and not an unsourced claim.
+    const out = await runTool('point_at', { target_area: 'page', target_id: hit.id, target_text: label, hint: `Here: ${label}` }, ctx, this.host, halt);
     if (out.error || out.stop) return Boolean(out.stop);
     const sensitive = Boolean(out.sensitive);
     await runTool(

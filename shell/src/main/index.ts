@@ -6,7 +6,7 @@
 import { Menu, app, globalShortcut, ipcMain, session, webContents } from 'electron';
 import { join } from 'node:path';
 import { AgentCore } from '../agent/core';
-import { ClinePlanner } from '../agent/clinePlanner';
+import { ClinePlanner, warmUpSdk } from '../agent/clinePlanner';
 import { DemoPlanner } from '../agent/demoPlanner';
 import { JUDGES_DEMO_MESSAGE, REGISTER_DEMO_MESSAGE, RegisterDemoPlanner } from '../agent/registerDemoPlanner';
 import { FallbackPlanner } from '../agent/fallbackPlanner';
@@ -152,12 +152,29 @@ async function boot(): Promise<void> {
     if (event.type === 'escape') agent?.handleEsc();
   });
 
+  // Hotkey toggles the Guide panel: hide it completely, press again to show it.
   globalShortcut.register(config.hotkey.replace('Ctrl', 'CommandOrControl'), () => {
-    chatWindow.focusInput();
-    chatView.webContents.send(IPC.chatFocusInput);
+    const visible = chatWindow.toggleVisible();
+    logger.info('chat', visible ? 'panel shown (hotkey)' : 'panel hidden (hotkey)');
+    if (visible) chatView.webContents.send(IPC.chatFocusInput);
   });
 
   void pollHealth(rag, sendChat);
+  if (config.plannerImpl === 'cline') {
+    if (config.planner === 'hosted' && !config.plannerApiKey) {
+      logger.warn('planner', 'PLANNER=hosted but no PLANNER_API_KEY / CLINE_API_KEY is set; answers will fail');
+    }
+    void warmUpSdk(
+      {
+        providerId: config.plannerProviderId,
+        modelId: config.plannerModel,
+        baseUrl: config.plannerUrl,
+        apiKey: config.plannerApiKey,
+        reasoningEffort: config.plannerReasoning || undefined,
+      },
+      logger,
+    );
+  }
   await tabs.openTab(judgesRun ? JUDGES_START_URL : config.startUrl).catch((error) => logger.warn('tabs', 'start url failed', { error: String(error) }));
 
   // Diagnostic hook: `--dump-labels` logs every clickable label on the start page.

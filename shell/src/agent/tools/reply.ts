@@ -20,6 +20,7 @@ export const reply: ToolDef<z.infer<typeof schema>> = {
     const sources = check.isFact ? citationsFor(input.source_ids, ctx.chunks) : undefined;
     await streamAssistant(host, input.text, sources, ctx.signal);
     if (check.isFact) emitLastVerified(host, ctx, input.source_ids);
-    return { ok: true, shown: true };
+    ctx.shownToUser = true;
+    return { ok: true, shown: true, next: 'If this answers the user, call finish now.' };
   },
 };

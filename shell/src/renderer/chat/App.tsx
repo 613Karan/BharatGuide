@@ -23,8 +23,8 @@ const STATE_LABEL: Record<string, string> = {
 
 const STARTERS = [
   'How do I register as a new voter?',
-  'Which documents are needed to update my Aadhaar address?',
-  'Open the ECI voter portal',
+  'Which documents are needed to update my address?',
+  'Open the official portal',
 ];
 
 export function App() {
@@ -76,11 +76,11 @@ export function App() {
         <div className="brand">
           <span className={`orb st-${s.state}`} />
           <span>Guide</span>
-          <span className="brand-sub">ECI · UIDAI</span>
+          <span className="brand-sub">Official Docs</span>
         </div>
         <div className="head-right">
           <span className={`chip-state st-${s.state}`}>{STATE_LABEL[s.state]}</span>
-          <button className="icon" onClick={toggle} title={collapsed ? 'Expand' : 'Collapse'}>
+          <button className="icon" onClick={toggle} title={`${collapsed ? 'Expand' : 'Collapse'} (hide/show: Ctrl+Shift+Space)`}>
             {collapsed ? '▾' : '▴'}
           </button>
         </div>
@@ -95,7 +95,7 @@ export function App() {
       <div className="messages" ref={listRef}>
         {s.items.length === 0 && (
           <div className="empty">
-            <p>Ask about voter registration (ECI) or Aadhaar (UIDAI). I answer only from official documents and show you where to click.</p>
+            <p>Ask a question or request guidance. I answer only from official documents and show you where to click.</p>
             <div className="starters">
               {STARTERS.map((q) => (
                 <button key={q} onClick={() => send(q)}>

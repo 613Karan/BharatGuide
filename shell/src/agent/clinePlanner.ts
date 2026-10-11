@@ -34,6 +34,33 @@ function loadSdk(): Promise<SdkModule> {
   return sdkPromise;
 }
 
+/**
+ * Load the SDK and build one throwaway Agent at boot. The first construction
+ * blocks the main thread for ~1 s (lazy provider setup); doing it here keeps
+ * that stall out of a running task, where it would starve the ghost heartbeat.
+ * No network call is made.
+ */
+export async function warmUpSdk(model: ClineModelConfig, logger: LoggerPort): Promise<void> {
+  const started = Date.now();
+  try {
+    const sdk = await loadSdk();
+    if (!model.reasoningEffort) {
+      new sdk.Agent({
+        systemPrompt: 'warm-up',
+        tools: [],
+        maxIterations: 1,
+        providerId: model.providerId,
+        modelId: model.modelId,
+        baseUrl: model.baseUrl,
+        apiKey: model.apiKey || 'warm-up',
+      });
+    }
+    logger.info('planner', 'sdk warmed up', { ms: Date.now() - started });
+  } catch (error) {
+    logger.warn('planner', 'sdk warm-up failed', { error: String(error) });
+  }
+}
+
 export class ClinePlanner implements Planner {
   readonly name = 'cline-sdk';
   private agent: { abort(reason?: unknown): void } | null = null;

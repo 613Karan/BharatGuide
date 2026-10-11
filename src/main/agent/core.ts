@@ -56,7 +56,7 @@ interface Task {
 }
 
 const MAX_STEPS = 14;
-const NAVIGATION_WAIT_MS = 10_000;
+const NAVIGATION_WAIT_MS = 1500;
 
 export class AgentCore {
   private readonly bridge: BrowserBridge;

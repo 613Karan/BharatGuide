@@ -30,7 +30,11 @@ export const pointAt: ToolDef<z.infer<typeof schema>> = {
     // Quoting a label that is visible on the page ("Click 'Submit Appeal'") is UI
     // guidance, not a sourced fact: remove those quotes before the fact check.
     const labels = await pageLabels(host, input.target_text);
-    const check = checkUserFacingText(unquotePageLabels(hint, labels), input.kind, input.source_ids, ctx.chunks);
+    // Text that is a visible page label (e.g. "Fill Form 6") is UI guidance, not
+    // a sourced claim: remove it before the fact check. The rest of the hint is
+    // still checked, so "Form 6 takes 30 days" next to it is rejected.
+    const unlabeled = stripPageLabels(unquotePageLabels(hint, labels), labels);
+    const check = checkUserFacingText(unlabeled, input.kind, input.source_ids, ctx.chunks);
     if (!check.ok) return { error: `hint rejected: ${check.reason}` };
 
     if (input.target_area === 'toolbar') {
@@ -87,6 +91,7 @@ export const pointAt: ToolDef<z.infer<typeof schema>> = {
     if (info.sensitive && !SELF_HINT.test(hint)) hint = `${hint} (please do this yourself)`;
     const c = center(info.rect);
     await telegraph(host, ctx, { x: origin.x + c.x, y: origin.y + c.y }, hint);
+    ctx.shownToUser = true;
     const extra = {
       ...(matched ? { matched_label: matched } : {}),
       ...(scrolled ? { scrolled, page: describePage(await host.browser.snapshot()) } : {}),
@@ -112,6 +117,23 @@ export function unquotePageLabels(hint: string, labels: string[]): string {
     const label = inner.trim().toLowerCase();
     return labels.some((l) => l.includes(label)) ? inner : whole;
   });
+}
+
+/**
+ * Remove exact (case-insensitive) occurrences of visible page labels from the
+ * hint, longest first. Only labels of 6+ chars count, so short words such as
+ * "Form" or "Home" cannot be used to hide a made-up fact.
+ */
+export function stripPageLabels(hint: string, labels: string[]): string {
+  const usable = [...new Set(labels.map((l) => l.replace(/\s+/g, ' ').trim()).filter((l) => l.length >= 6))].sort(
+    (a, b) => b.length - a.length,
+  );
+  let out = hint;
+  for (const label of usable) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+');
+    out = out.replace(new RegExp(escaped, 'gi'), ' ');
+  }
+  return out.replace(/\s+/g, ' ').trim() || 'here';
 }
 
 /** "Click here to submit an appeal" -> "submit an appeal": the hint usually names the target. */

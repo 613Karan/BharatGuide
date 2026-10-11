@@ -10,7 +10,7 @@ const stateMachine_1 = require("./stateMachine");
 const telegraph_1 = require("./telegraph");
 const typingGrant_1 = require("./typingGrant");
 const MAX_STEPS = 14;
-const NAVIGATION_WAIT_MS = 10_000;
+const NAVIGATION_WAIT_MS = 1500;
 class AgentCore {
     bridge;
     overlay;

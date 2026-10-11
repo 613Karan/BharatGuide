@@ -450,7 +450,7 @@ export class BrowserBridge {
   async pressEnter(): Promise<ActionResult> {
     const page = this.requirePage();
     const navigation = page
-      .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15_000 })
+      .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 2500 })
       .then(() => true)
       .catch(() => false);
     await page.keyboard.press('Enter');

@@ -72,10 +72,29 @@ export class ChatWindow {
     this.sync();
   }
 
-  /** Overlay-local rect of the panel (ghost avoids nothing, but the agent may need it). */
+  /** Show (if hidden), expand (if collapsed) and focus the panel. */
   focusInput(): void {
+    if (this.win.isDestroyed()) return;
+    if (!this.win.isVisible()) this.win.show();
     if (this.collapsed) this.setCollapsed(false);
     this.win.focus();
+  }
+
+  /**
+   * Hotkey: hide the panel completely, or bring it back. Returns true when the
+   * panel is visible afterwards. On hide, focus goes back to the main window:
+   * the ghost overlay hides itself when none of our windows has focus.
+   */
+  toggleVisible(): boolean {
+    if (this.win.isDestroyed()) return false;
+    if (this.win.isVisible()) {
+      this.win.hide();
+      if (!this.parent.isDestroyed()) this.parent.focus();
+      return false;
+    }
+    this.sync();
+    this.focusInput();
+    return true;
   }
 
   destroy(): void {

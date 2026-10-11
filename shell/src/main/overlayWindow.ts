@@ -11,6 +11,8 @@ import { preloadPath, rendererEntry } from './paths';
 
 const PING_MS = 2000;
 const DEAD_AFTER_MS = 5000;
+/** A tick this much later than scheduled means the main process itself was blocked. */
+const STALL_MS = 1500;
 
 export class OverlayWindow implements GhostPort {
   readonly win: BrowserWindow;
@@ -98,8 +100,19 @@ export class OverlayWindow implements GhostPort {
   }
 
   start(): void {
+    let lastTick = Date.now();
     this.timer = setInterval(() => {
       if (this.win.isDestroyed()) return this.markDead('overlay destroyed');
+      // If THIS (main) process was blocked (e.g. a heavy module loading), the
+      // pings were never sent, so the overlay could not answer. That is not an
+      // overlay failure: restart the heartbeat window instead of halting.
+      const now = Date.now();
+      const stalledMs = now - lastTick - PING_MS;
+      lastTick = now;
+      if (stalledMs > STALL_MS) {
+        this.logger.warn('overlay', 'main process stalled; heartbeat window reset', { stalledMs });
+        this.lastPong = now;
+      }
       // Safety net for missed focus events (e.g. the app launched behind another window).
       this.scheduleFocusCheck();
       if (this.parent.isMinimized() || !this.appActive) {

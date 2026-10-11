@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { AgentCore } from '../src/agent/core';
 import { runTool } from '../src/agent/executor';
 import { locateTarget } from '../src/agent/intent';
-import { stripHint } from '../src/agent/tools/pointAt';
+import { stripHint, stripPageLabels } from '../src/agent/tools/pointAt';
 import type { SnapElement } from '../src/shared/page';
 import { assistantText, makeCtx } from './fakes';
 import { portal } from './voterPortal';
@@ -93,6 +93,38 @@ describe('point_at by visible text', () => {
     const { host } = portal();
     const out = await runTool('point_at', { target_area: 'page', target_id: 'e10', hint: 'Appeals are decided in "15 days"' }, makeCtx(), host, halt);
     expect(out.error).toMatch(/hint rejected/);
+  });
+
+  it('"fill form 6": a visible label containing a form id is UI guidance (real log 23:07)', async () => {
+    // Before the fix the hint "Here: <label>" was rejected as an unsourced fact
+    // (the label contains "Form 6"), so the ghost never showed the hint.
+    const { host, ghost, events } = portal();
+    let plannerRan = false;
+    const agent = new AgentCore(host, () => ({ name: 'x', async run() { plannerRan = true; }, cancel() {} }));
+    await agent.handleUserMessage('where is fill form 6');
+    expect(plannerRan).toBe(false);
+    expect(ghost.log).toContain('hint:Here: Fill Form 6');
+    expect(assistantText(events)).toContain('Fill Form 6');
+    expect(events.some((e) => e.t === 'card' && (e as { kind: string }).kind === 'halted')).toBe(false);
+  });
+
+  it('a made-up fact next to a visible label is still rejected', async () => {
+    const { host, browser } = portal();
+    const declaration: SnapElement = { ...APPEAL, id: 'e92', name: 'Fill Declaration Form for Form 6' };
+    browser.hidden = [declaration];
+    const out = await runTool(
+      'point_at',
+      { target_area: 'page', target_text: 'Fill Declaration Form for Form 6', hint: 'Fill Declaration Form for Form 6, then Form 8 is approved in 30 days' },
+      makeCtx(),
+      host,
+      halt,
+    );
+    expect(out.error).toMatch(/hint rejected/);
+  });
+
+  it('stripPageLabels removes only long, exact labels', () => {
+    expect(stripPageLabels('Here: Fill Form 6', ['fill form 6'])).toBe('Here:');
+    expect(stripPageLabels('Form 6 takes 30 days', ['form'])).toBe('Form 6 takes 30 days');
   });
 
   it('stripHint turns a hint into the label to look for', () => {
